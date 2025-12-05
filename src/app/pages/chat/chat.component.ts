@@ -8,11 +8,11 @@ import { MessageService } from '../../core/services/message.service';
 import { P2PService } from '../../core/services/p2p.service';
 import { ErrorService } from '../../core/services/error.service';
 import { APP_CONSTANTS } from '../../core/constants/app.const';
-import { AddContactModalComponent } from '../../shared/components/add-contact-modal/add-contact-modal.component';
 import { SignalingExchangeModalComponent } from '../../shared/components/signaling-exchange-modal/signaling-exchange-modal.component';
 import { SidebarComponent } from './components/sidebar/sidebar.component';
 import { ChatHeaderComponent } from './components/chat-header/chat-header.component';
 import { ChatAreaComponent } from './components/chat-area/chat-area.component';
+import { ToastController } from '@ionic/angular';
 
 @Component({
   selector: 'app-chat',
@@ -34,6 +34,7 @@ export class ChatComponent implements OnInit {
   private p2pService = inject(P2PService);
   private modalController = inject(ModalController);
   private errorService = inject(ErrorService);
+  private toastController = inject(ToastController)
 
   readonly currentUser = this.userService.currentUser;
   readonly contacts = this.contactService.contacts;
@@ -139,5 +140,18 @@ export class ChatComponent implements OnInit {
     if (data) {
       await this.errorService.showSuccess('Connection data exchanged successfully');
     }
+  }
+
+  /**
+   * Show toast notification
+   */
+  private async showToast(message: string, color: 'success' | 'danger' | 'warning' = 'success'): Promise<void> {
+    const toast = await this.toastController.create({
+      message,
+      duration: 2000,
+      color,
+      position: 'bottom'
+    });
+    await toast.present();
   }
 }

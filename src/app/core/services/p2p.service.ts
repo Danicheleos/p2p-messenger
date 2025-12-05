@@ -13,6 +13,18 @@ export interface SignalingData {
 }
 
 /**
+ * Connection handshake data structure for initial contact exchange
+ * Combines user info, public key, and connection data
+ */
+export interface ConnectionHandshakeData {
+  version: string; // Version of the handshake format
+  userId: string;
+  username: string;
+  publicKey: string;
+  connectionData?: SignalingData[]; // Optional: connection data if initiating connection
+}
+
+/**
  * P2P Service - Manages WebRTC connections for peer-to-peer messaging
  */
 @Injectable({ providedIn: 'root' })
@@ -294,6 +306,48 @@ export class P2PService {
    */
   clearPendingSignalingData(contactId: string): void {
     this.pendingSignalingData.delete(contactId);
+  }
+
+  /**
+   * Create connection handshake data for sharing
+   * Includes userId, username, publicKey, and optional connection data
+   */
+  createHandshakeData(userId: string, username: string, publicKey: string, contactId?: string): ConnectionHandshakeData {
+    const handshake: ConnectionHandshakeData = {
+      version: '1.0',
+      userId,
+      username,
+      publicKey
+    };
+
+    // Include connection data if contactId is provided and connection exists
+    if (contactId) {
+      const connectionData = this.pendingSignalingData.get(contactId);
+      if (connectionData && connectionData.length > 0) {
+        handshake.connectionData = connectionData;
+      }
+    }
+
+    return handshake;
+  }
+
+  /**
+   * Parse connection handshake data from string
+   */
+  parseHandshakeData(data: string): ConnectionHandshakeData | null {
+    try {
+      const parsed = JSON.parse(data);
+      
+      // Validate structure
+      if (parsed.version && parsed.userId && parsed.username && parsed.publicKey) {
+        return parsed as ConnectionHandshakeData;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error parsing handshake data:', error);
+      return null;
+    }
   }
 
   /**
