@@ -1,30 +1,15 @@
 import { Component, OnInit, computed, inject, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import {
-  IonContent,
-  IonHeader,
-  IonToolbar,
-  IonTitle,
-  IonButton,
-  IonIcon,
-  IonButtons,
-  IonList,
-  IonSearchbar,
-  PopoverController
-} from '@ionic/angular/standalone';
-import { addIcons } from 'ionicons';
-import { logOut, person, add, search, menu, chatbubblesOutline } from 'ionicons/icons';
+import { IonContent, ModalController } from '@ionic/angular/standalone';
 import { UserService } from '../../core/services/user.service';
 import { ContactService } from '../../core/services/contact.service';
 import { MessageService } from '../../core/services/message.service';
-import { StorageService } from '../../core/services/storage.service';
 import { APP_CONSTANTS } from '../../core/constants/app.const';
-import { UserMenuComponent } from './user-menu.component';
-import { ContactItemComponent } from '../../shared/components/contact-item/contact-item.component';
-import { MessageBubbleComponent } from '../../shared/components/message-bubble/message-bubble.component';
-import { MessageInputComponent } from '../../shared/components/message-input/message-input.component';
-import { ThemeToggleComponent } from '../../shared/components/theme-toggle/theme-toggle.component';
+import { AddContactModalComponent } from '../../shared/components/add-contact-modal/add-contact-modal.component';
+import { SidebarComponent } from './components/sidebar/sidebar.component';
+import { ChatHeaderComponent } from './components/chat-header/chat-header.component';
+import { ChatAreaComponent } from './components/chat-area/chat-area.component';
 
 @Component({
   selector: 'app-chat',
@@ -32,18 +17,9 @@ import { ThemeToggleComponent } from '../../shared/components/theme-toggle/theme
   imports: [
     CommonModule,
     IonContent,
-    IonHeader,
-    IonToolbar,
-    IonTitle,
-    IonButton,
-    IonIcon,
-    IonButtons,
-    IonList,
-    IonSearchbar,
-    ContactItemComponent,
-    MessageBubbleComponent,
-    MessageInputComponent,
-    ThemeToggleComponent
+    SidebarComponent,
+    ChatHeaderComponent,
+    ChatAreaComponent
   ],
   templateUrl: './chat.component.html',
   styleUrl: './chat.component.scss'
@@ -52,9 +28,8 @@ export class ChatComponent implements OnInit {
   private userService = inject(UserService);
   private contactService = inject(ContactService);
   private messageService = inject(MessageService);
-  private storageService = inject(StorageService);
   private router = inject(Router);
-  private popoverController = inject(PopoverController);
+  private modalController = inject(ModalController);
 
   readonly currentUser = this.userService.currentUser;
   readonly contacts = this.contactService.contacts;
@@ -62,20 +37,20 @@ export class ChatComponent implements OnInit {
   readonly messages = this.messageService.messages;
   readonly selectedContactId = this.contactService.selectedContactId;
   readonly isSending = signal(false);
-  readonly searchQuery = signal('');
   readonly sidebarOpen = signal(false);
 
   readonly username = computed(() => this.currentUser()?.username || 'User');
-  readonly selectedContactName = computed(() => this.selectedContact()?.username || '');
-  readonly filteredContacts = computed(() => {
-    const query = this.searchQuery().toLowerCase();
-    if (!query) return this.contacts();
-    return this.contacts().filter(c => c.username.toLowerCase().includes(query));
+  readonly selectedContactName = computed(() => this.selectedContact()?.username || 'P2P Chat');
+  readonly userInitials = computed(() => {
+    const username = this.username();
+    if (username.length >= 2) {
+      return username.substring(0, 2).toUpperCase();
+    }
+    return username.charAt(0).toUpperCase();
   });
+  readonly showMenuButton = computed(() => window.innerWidth < APP_CONSTANTS.BREAKPOINTS.DESKTOP_MIN);
 
   constructor() {
-    addIcons({ logOut, person, add, search, menu, chatbubblesOutline });
-
     // Load messages when contact is selected
     effect(() => {
       const contactId = this.contactService.selectedContactId();
@@ -116,23 +91,7 @@ export class ChatComponent implements OnInit {
     }
   }
 
-  async presentPopover(event: Event): Promise<void> {
-    const popover = await this.popoverController.create({
-      component: UserMenuComponent,
-      event: event,
-      translucent: true,
-      showBackdrop: true
-    });
-
-    await popover.present();
-
-    const { data } = await popover.onDidDismiss();
-    if (data?.action === 'logout') {
-      await this.logout();
-    }
-  }
-
-  selectContact(contactId: string): void {
+  onContactSelected(contactId: string): void {
     this.contactService.selectContact(contactId);
     // Close sidebar on mobile after selection (< 768px)
     if (window.innerWidth < APP_CONSTANTS.BREAKPOINTS.DESKTOP_MIN) {
@@ -156,24 +115,50 @@ export class ChatComponent implements OnInit {
     }
   }
 
-  onSearch(event: any): void {
-    this.searchQuery.set(event.detail.value || '');
-  }
-
   toggleSidebar(): void {
     this.sidebarOpen.update(open => !open);
   }
 
-  // Placeholder for add contact - will be implemented in Phase 4
-  async addContact(): Promise<void> {
-    alert('Add contact functionality will be implemented in Phase 4');
+  async onAddContact(): Promise<void> {
+    const modal = await this.modalController.create({
+      component: AddContactModalComponent,
+      presentingElement: await this.modalController.getTop()
+    });
+
+    await modal.present();
+
+    const { data } = await modal.onDidDismiss();
+
+    if (data?.username && data?.publicKey) {
+      try {
+        await this.contactService.addContact(data.username, data.publicKey);
+        // Optionally select the newly added contact
+        const contacts = this.contactService.contacts();
+        const newContact = contacts.find(c => c.username === data.username);
+        if (newContact) {
+          this.onContactSelected(newContact.id);
+        }
+      } catch (error: any) {
+        console.error('Error adding contact:', error);
+        alert(error.message || 'Failed to add contact. Please try again.');
+      }
+    }
   }
 
-  getInitials(): string {
-    const username = this.username();
-    if (username.length >= 2) {
-      return username.substring(0, 2).toUpperCase();
+  async onContactDeleted(contactData: { id: string; username: string }): Promise<void> {
+    const confirmed = confirm(`Are you sure you want to delete ${contactData.username}? This action cannot be undone.`);
+    
+    if (confirmed) {
+      try {
+        await this.contactService.removeContact(contactData.id);
+        // Clear messages if this was the selected contact
+        if (this.selectedContactId() === contactData.id) {
+          this.messageService.clearMessages();
+        }
+      } catch (error) {
+        console.error('Error deleting contact:', error);
+        alert('Failed to delete contact. Please try again.');
+      }
     }
-    return username.charAt(0).toUpperCase();
   }
 }

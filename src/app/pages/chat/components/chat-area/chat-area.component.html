@@ -1,0 +1,20 @@
+<main class="chat-area">
+  @if (hasSelectedContact()) {
+    <app-messages-container
+      [messages]="messages"
+      [currentUserId]="currentUserId"
+    ></app-messages-container>
+
+    <app-message-input
+      [isSending]="isSending"
+      (sendMessage)="onSendMessage($event)"
+    ></app-message-input>
+  } @else {
+    <div class="no-contact-selected">
+      <ion-icon name="chatbubbles-outline"></ion-icon>
+      <h2>Select a contact to start chatting</h2>
+      <p>Choose a contact from the sidebar or add a new one</p>
+    </div>
+  }
+</main>
+

@@ -1,12 +1,14 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { IonItem, IonLabel, IonAvatar, IonBadge } from '@ionic/angular/standalone';
+import { IonItem, IonLabel, IonAvatar, IonBadge, IonButton, IonIcon } from '@ionic/angular/standalone';
+import { addIcons } from 'ionicons';
+import { trash } from 'ionicons/icons';
 import { Contact } from '../../../core/interfaces';
 
 @Component({
   selector: 'app-contact-item',
   standalone: true,
-  imports: [CommonModule, IonItem, IonLabel, IonAvatar, IonBadge],
+  imports: [CommonModule, IonItem, IonLabel, IonAvatar, IonBadge, IonButton, IonIcon],
   template: `
     <ion-item
       [button]="true"
@@ -28,6 +30,16 @@ import { Contact } from '../../../core/interfaces';
       @if (unreadCount && unreadCount > 0) {
         <ion-badge slot="end" color="primary">{{ unreadCount }}</ion-badge>
       }
+      <ion-button
+        slot="end"
+        fill="clear"
+        size="small"
+        (click)="onDelete($event)"
+        class="delete-button"
+        [attr.aria-label]="'Delete contact'"
+      >
+        <ion-icon name="trash" slot="icon-only"></ion-icon>
+      </ion-button>
     </ion-item>
   `,
   styles: `
@@ -80,6 +92,23 @@ import { Contact } from '../../../core/interfaces';
     ion-badge {
       margin-inline-start: 8px;
     }
+
+    .delete-button {
+      --color: var(--app-error-color);
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      margin-inline-start: 4px;
+    }
+
+    .contact-item:hover .delete-button {
+      opacity: 1;
+    }
+
+    @media (max-width: 767px) {
+      .delete-button {
+        opacity: 1; // Always visible on mobile
+      }
+    }
   `
 })
 export class ContactItemComponent {
@@ -88,6 +117,11 @@ export class ContactItemComponent {
   @Input() lastMessage?: string;
   @Input() unreadCount?: number;
   @Output() clicked = new EventEmitter<void>();
+  @Output() delete = new EventEmitter<void>();
+
+  constructor() {
+    addIcons({ trash });
+  }
 
   getInitials(): string {
     const username = this.contact.username;
@@ -99,6 +133,11 @@ export class ContactItemComponent {
 
   onClick(): void {
     this.clicked.emit();
+  }
+
+  onDelete(event: Event): void {
+    event.stopPropagation(); // Prevent triggering the contact selection
+    this.delete.emit();
   }
 }
 

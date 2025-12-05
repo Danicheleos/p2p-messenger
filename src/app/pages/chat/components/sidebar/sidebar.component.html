@@ -1,0 +1,48 @@
+<aside [class.open]="isOpen" class="sidebar mobile">
+  <div class="sidebar-header">
+    <div class="user-profile">
+      <div class="user-avatar">{{ userInitials }}</div>
+      <div class="user-info">
+        <h3>{{ username }}</h3>
+        <p>Your account</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="sidebar-content">
+    <ion-searchbar
+      (ionInput)="onSearch($event)"
+      placeholder="Search contacts..."
+      class="searchbar"
+    ></ion-searchbar>
+
+    <div class="contacts-header">
+      <h4>Contacts</h4>
+      <ion-button fill="clear" size="small" (click)="onAddContact()">
+        <ion-icon name="add" slot="icon-only"></ion-icon>
+      </ion-button>
+    </div>
+
+    <ion-list class="contacts-list">
+      @if (filteredContacts().length === 0) {
+        <div class="empty-state">
+          <p>No contacts yet</p>
+          <ion-button fill="outline" size="small" (click)="onAddContact()">
+            <ion-icon name="add" slot="start"></ion-icon>
+            Add Contact
+          </ion-button>
+        </div>
+      } @else {
+        @for (contact of filteredContacts(); track contact.id) {
+          <app-contact-item
+            [contact]="contact"
+            [isSelected]="contact.id === selectedContactId()"
+            (clicked)="onContactClick(contact.id)"
+            (delete)="onContactDelete(contact.id, contact.username)"
+          ></app-contact-item>
+        }
+      }
+    </ion-list>
+  </div>
+</aside>
+

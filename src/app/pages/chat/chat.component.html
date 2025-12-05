@@ -1,104 +1,32 @@
-<ion-header>
-  <ion-toolbar>
-    <ion-buttons slot="start">
-      <ion-button (click)="toggleSidebar()" class="menu-toggle">
-        <ion-icon name="menu" slot="icon-only"></ion-icon>
-      </ion-button>
-    </ion-buttons>
-    <ion-title>{{ selectedContactName() || 'P2P Chat' }}</ion-title>
-    <ion-buttons slot="end">
-      <app-theme-toggle></app-theme-toggle>
-      <ion-button (click)="presentPopover($event)" id="user-menu-button">
-        <ion-icon name="person" slot="icon-only"></ion-icon>
-      </ion-button>
-    </ion-buttons>
-  </ion-toolbar>
-</ion-header>
+<app-chat-header
+  [title]="selectedContactName()"
+  [showMenuButton]="showMenuButton()"
+  (menuToggle)="toggleSidebar()"
+  (logout)="logout()"
+></app-chat-header>
 
 <ion-content [fullscreen]="true" class="chat-content">
-<div class="chat-layout">
-  <!-- Sidebar -->
-  <aside [class.open]="sidebarOpen()" class="sidebar mobile">
-    <div class="sidebar-header">
-      <div class="user-profile">
-        <div class="user-avatar">{{ getInitials() }}</div>
-        <div class="user-info">
-          <h3>{{ username() }}</h3>
-          <p>Your account</p>
-        </div>
-      </div>
-    </div>
+  <div class="chat-layout">
+    <app-sidebar
+      [isOpen]="sidebarOpen()"
+      [username]="username()"
+      [userInitials]="userInitials()"
+      (contactSelected)="onContactSelected($event)"
+      (contactDeleted)="onContactDeleted($event)"
+      (addContactClicked)="onAddContact()"
+    ></app-sidebar>
 
-    <div class="sidebar-content">
-      <ion-searchbar
-        (ionInput)="onSearch($event)"
-        placeholder="Search contacts..."
-        class="searchbar"
-      ></ion-searchbar>
+    <app-chat-area
+      [selectedContact]="selectedContact()"
+      [messages]="messages()"
+      [currentUserId]="currentUser()?.id || ''"
+      [isSending]="isSending()"
+      (sendMessage)="onSendMessage($event)"
+    ></app-chat-area>
 
-      <div class="contacts-header">
-        <h4>Contacts</h4>
-        <ion-button fill="clear" size="small" (click)="addContact()">
-          <ion-icon name="add" slot="icon-only"></ion-icon>
-        </ion-button>
-      </div>
-
-      <ion-list class="contacts-list">
-        @if (filteredContacts().length === 0) {
-          <div class="empty-state">
-            <p>No contacts yet</p>
-            <ion-button fill="outline" size="small" (click)="addContact()">
-              <ion-icon name="add" slot="start"></ion-icon>
-              Add Contact
-            </ion-button>
-          </div>
-        } @else {
-          @for (contact of filteredContacts(); track contact.id) {
-            <app-contact-item
-              [contact]="contact"
-              [isSelected]="contact.id === selectedContactId()"
-              (clicked)="selectContact(contact.id)"
-            ></app-contact-item>
-          }
-        }
-      </ion-list>
-    </div>
-  </aside>
-
-  <!-- Chat Area -->
-  <main class="chat-area">
-    @if (selectedContact()) {
-      <div class="messages-container">
-        @if (messages().length === 0) {
-          <div class="empty-messages">
-            <p>No messages yet. Start the conversation!</p>
-          </div>
-        } @else {
-          @for (message of messages(); track message.id) {
-            <app-message-bubble
-              [message]="message"
-              [currentUserId]="currentUser()?.id || ''"
-            ></app-message-bubble>
-          }
-        }
-      </div>
-
-      <app-message-input
-        [isSending]="isSending()"
-        (sendMessage)="onSendMessage($event)"
-      ></app-message-input>
-    } @else {
-      <div class="no-contact-selected">
-        <ion-icon name="chatbubbles-outline"></ion-icon>
-        <h2>Select a contact to start chatting</h2>
-        <p>Choose a contact from the sidebar or add a new one</p>
-      </div>
+    <!-- Sidebar Overlay (Mobile) -->
+    @if (sidebarOpen()) {
+      <div class="sidebar-overlay" (click)="toggleSidebar()"></div>
     }
-  </main>
-
-  <!-- Sidebar Overlay (Mobile) -->
-  @if (sidebarOpen()) {
-    <div class="sidebar-overlay" (click)="toggleSidebar()"></div>
-  }
-</div>
+  </div>
 </ion-content>

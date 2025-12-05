@@ -1,0 +1,15 @@
+// Responsive Design
+// Mobile: < 768px
+@media (max-width: 767px) {
+  .menu-toggle {
+    display: block;
+  }
+}
+
+// Desktop: >= 768px
+@media (min-width: 768px) {
+  .menu-toggle {
+    display: none;
+  }
+}
+
