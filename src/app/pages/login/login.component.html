@@ -1,0 +1,77 @@
+<ion-content [fullscreen]="true" class="login-content">
+  <div class="login-container">
+    <div class="login-header">
+      <h1 class="app-title">P2P Chat</h1>
+      <p class="app-subtitle">Secure peer-to-peer messaging</p>
+    </div>
+
+    <ion-card class="login-card">
+      <ion-card-header>
+        <ion-card-title>Create Account</ion-card-title>
+        <p class="card-subtitle">Enter a username to generate your encryption keys</p>
+      </ion-card-header>
+      <ion-card-content>
+        <form (ngSubmit)="onSubmit()" #loginForm="ngForm">
+          <ion-item class="input-item" [class.error]="showUsernameError">
+            <ion-label position="stacked">Username</ion-label>
+            <ion-input
+              [(ngModel)]="username"
+              name="username"
+              type="text"
+              placeholder="e.g., alice123"
+              [disabled]="isLoading"
+              (ionInput)="onUsernameInput()"
+              (ionBlur)="validateUsername()"
+              required
+              autocomplete="username"
+            ></ion-input>
+          </ion-item>
+
+          @if (showUsernameError) {
+            <div class="error-message">
+              <ion-icon name="alert-circle"></ion-icon>
+              <span>{{ usernameError }}</span>
+            </div>
+          }
+
+          @if (error) {
+            <div class="error-message">
+              <ion-icon name="alert-circle"></ion-icon>
+              <span>{{ error }}</span>
+            </div>
+          }
+
+          <div class="username-hint">
+            <p>Username requirements:</p>
+            <ul>
+              <li>{{ APP_CONSTANTS.VALIDATION.USERNAME_MIN_LENGTH }}-{{ APP_CONSTANTS.VALIDATION.USERNAME_MAX_LENGTH }} characters</li>
+              <li>Letters, numbers, underscores, or hyphens only</li>
+            </ul>
+          </div>
+
+          <ion-button
+            type="submit"
+            expand="block"
+            [disabled]="isLoading || !isFormValid()"
+            class="submit-button"
+            color="primary"
+          >
+            @if (isLoading) {
+              <ion-spinner name="crescent"></ion-spinner>
+              <span style="margin-left: 8px">Generating Keys...</span>
+            } @else {
+              <ion-icon name="key" slot="start"></ion-icon>
+              Create Account & Generate Keys
+            }
+          </ion-button>
+
+          <div class="security-note">
+            <ion-icon name="lock-closed"></ion-icon>
+            <p>Your private key is generated locally and never leaves your device</p>
+          </div>
+        </form>
+      </ion-card-content>
+    </ion-card>
+  </div>
+</ion-content>
+

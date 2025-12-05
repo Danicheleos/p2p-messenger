@@ -1,0 +1,19 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>P2P Chat</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="presentPopover($event)" id="user-menu-button">
+        <ion-icon name="person" slot="icon-only"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <div class="chat-placeholder">
+    <h2>Welcome, {{ username() }}!</h2>
+    <p>Chat interface will be implemented in Phase 3</p>
+    <p class="user-info">You are logged in as: <strong>{{ username() }}</strong></p>
+  </div>
+</ion-content>
+
