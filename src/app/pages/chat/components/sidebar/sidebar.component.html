@@ -6,6 +6,15 @@
         <h3>{{ username }}</h3>
         <p>Your account</p>
       </div>
+      <ion-button
+        fill="clear"
+        size="small"
+        (click)="copyPublicKey()"
+        title="Copy Public Key"
+        class="copy-key-button"
+      >
+        <ion-icon name="copy" slot="icon-only"></ion-icon>
+      </ion-button>
     </div>
   </div>
 

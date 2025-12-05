@@ -72,6 +72,16 @@
   }
 }
 
+.copy-key-button {
+  margin-left: auto;
+  flex-shrink: 0;
+  --color: var(--app-text-secondary);
+  
+  &:hover {
+    --color: var(--ion-color-primary);
+  }
+}
+
 .sidebar-content {
   flex: 1;
   display: flex;

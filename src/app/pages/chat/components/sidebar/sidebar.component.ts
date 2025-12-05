@@ -5,11 +5,13 @@ import {
   IonSearchbar,
   IonButton,
   IonIcon,
-  ModalController
+  ModalController,
+  ToastController
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { add } from 'ionicons/icons';
+import { add, copy } from 'ionicons/icons';
 import { ContactService } from '../../../../core/services/contact.service';
+import { UserService } from '../../../../core/services/user.service';
 import { ContactItemComponent } from '../../../../shared/components/contact-item/contact-item.component';
 import { AddContactModalComponent } from '../../../../shared/components/add-contact-modal/add-contact-modal.component';
 import { MessageService } from '../../../../core/services/message.service';
@@ -38,9 +40,12 @@ export class SidebarComponent {
   private modalController = inject(ModalController);
   private contactService = inject(ContactService);
   private messageService = inject(MessageService);
+  private userService = inject(UserService);
+  private toastController = inject(ToastController);
 
   readonly contacts = this.contactService.contacts;
   readonly selectedContactId = this.contactService.selectedContactId;
+  readonly currentUser = this.userService.currentUser;
 
   private _searchQuery = '';
 
@@ -51,7 +56,7 @@ export class SidebarComponent {
   });
 
   constructor() {
-    addIcons({ add });
+    addIcons({ add, copy });
   }
 
   onSearch(event: any): void {
@@ -105,6 +110,38 @@ export class SidebarComponent {
         alert(error.message || 'Failed to add contact. Please try again.');
       }
     }
+  }
+
+  /**
+   * Copy public key to clipboard
+   */
+  async copyPublicKey(): Promise<void> {
+    const user = this.currentUser();
+    if (!user || !user.publicKey) {
+      await this.showToast('No public key available', 'danger');
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(user.publicKey);
+      await this.showToast('Public key copied to clipboard!', 'success');
+    } catch (error) {
+      console.error('Failed to copy public key:', error);
+      await this.showToast('Failed to copy public key', 'danger');
+    }
+  }
+
+  /**
+   * Show toast notification
+   */
+  private async showToast(message: string, color: 'success' | 'danger' | 'warning' = 'success'): Promise<void> {
+    const toast = await this.toastController.create({
+      message,
+      duration: 2000,
+      color,
+      position: 'bottom'
+    });
+    await toast.present();
   }
 }
 
