@@ -2,6 +2,7 @@ import { Injectable, signal, computed, inject } from '@angular/core';
 import { StorageService } from './storage.service';
 import { UserService } from './user.service';
 import { ContactService } from './contact.service';
+import { P2PService } from './p2p.service';
 import { Message } from '../interfaces';
 
 /**
@@ -12,9 +13,11 @@ export class MessageService {
   private storageService = inject(StorageService);
   private userService = inject(UserService);
   private contactService = inject(ContactService);
+  private p2pService = inject(P2PService);
 
   private _messages = signal<Message[]>([]);
   private _currentContactId = signal<string | null>(null);
+  private messageUnsubscribers = new Map<string, () => void>();
 
   readonly messages = this._messages.asReadonly();
   readonly currentContactId = this._currentContactId.asReadonly();
@@ -37,6 +40,9 @@ export class MessageService {
       this._messages.set(messages);
       this._currentContactId.set(contactId);
       
+      // Set up P2P message listener for this contact
+      this.setupMessageListener(contactId);
+      
       // Mark messages as read
       await this.markAsRead(contactId);
     } catch (error) {
@@ -49,60 +55,22 @@ export class MessageService {
    * Clear messages (when no contact is selected)
    */
   clearMessages(): void {
+    // Clean up message listeners
+    const currentContactId = this._currentContactId();
+    if (currentContactId) {
+      const unsubscribe = this.messageUnsubscribers.get(currentContactId);
+      if (unsubscribe) {
+        unsubscribe();
+        this.messageUnsubscribers.delete(currentContactId);
+      }
+    }
+    
     this._messages.set([]);
     this._currentContactId.set(null);
   }
 
   /**
-   * Generate mock messages for testing
-   * Creates sample messages for a contact
-   */
-  async generateMockMessages(contactId: string, count: number = 5): Promise<void> {
-    const user = this.userService.currentUser();
-    if (!user) {
-      throw new Error('User must be authenticated to generate mock messages');
-    }
-
-    // Check if messages already exist
-    const existingMessages = await this.storageService.getMessages(contactId, user.id);
-    if (existingMessages.length > 0) {
-      console.log(`Messages already exist for contact ${contactId}, skipping mock data generation`);
-      return;
-    }
-
-    const mockMessages = [
-      { senderId: contactId, content: 'Hey! How are you doing?', hoursAgo: 2 },
-      { senderId: user.id, content: 'I\'m doing great, thanks for asking! How about you?', hoursAgo: 1.5 },
-      { senderId: contactId, content: 'Pretty good! Just working on some projects.', hoursAgo: 1 },
-      { senderId: user.id, content: 'That sounds interesting. What kind of projects?', hoursAgo: 0.5 },
-      { senderId: contactId, content: 'Just some web development stuff. Nothing too exciting 😊', hoursAgo: 0.25 }
-    ].slice(0, count);
-
-    for (const mock of mockMessages) {
-      const message: Message = {
-        id: crypto.randomUUID(),
-        senderId: mock.senderId,
-        recipientId: mock.senderId === user.id ? contactId : user.id,
-        content: mock.content,
-        timestamp: new Date(Date.now() - mock.hoursAgo * 60 * 60 * 1000),
-        encrypted: false,
-        delivered: true,
-        read: mock.senderId === user.id // Sent messages are "read" by default
-      };
-
-      await this.storageService.saveMessage(message);
-    }
-
-    // Reload messages if this is the current contact
-    if (this._currentContactId() === contactId) {
-      await this.loadMessages(contactId);
-    }
-
-    console.log(`Generated ${mockMessages.length} mock messages for contact ${contactId}`);
-  }
-
-  /**
-   * Send a message (without encryption for now - will be added in Phase 6)
+   * Send a message via P2P connection
    */
   async sendMessage(text: string, contactId: string, attachment?: File): Promise<void> {
     const user = this.userService.currentUser();
@@ -117,6 +85,13 @@ export class MessageService {
       attachmentData = await this.fileToBase64(attachment);
     }
 
+    // Prepare message payload (will be encrypted in Phase 6)
+    const messagePayload = JSON.stringify({
+      text,
+      attachment: attachmentData,
+      timestamp: new Date().toISOString()
+    });
+
     const message: Message = {
       id: crypto.randomUUID(),
       senderId: user.id,
@@ -129,6 +104,20 @@ export class MessageService {
       read: false
     };
 
+    // Try to send via P2P connection
+    try {
+      if (this.p2pService.hasConnection(contactId)) {
+        const connectionState = this.p2pService.getConnectionState(contactId);
+        if (connectionState === 'connected') {
+          await this.p2pService.sendMessage(messagePayload, contactId);
+          message.delivered = true;
+        }
+      }
+    } catch (error) {
+      console.error('Error sending message via P2P:', error);
+      // Message will be saved but marked as not delivered
+    }
+
     // Save to storage
     await this.storageService.saveMessage(message);
 
@@ -137,8 +126,6 @@ export class MessageService {
 
     // Update contact's last message timestamp
     this.contactService.updateContactLastMessage(contactId, message.timestamp);
-
-    // TODO: Send via P2P connection (Phase 5)
   }
 
   /**
@@ -171,6 +158,68 @@ export class MessageService {
 
     // Clear unread count
     this.contactService.clearUnreadCount(contactId);
+  }
+
+  /**
+   * Set up message listener for a contact
+   */
+  private setupMessageListener(contactId: string): void {
+    // Remove existing listener if any
+    const existingUnsubscribe = this.messageUnsubscribers.get(contactId);
+    if (existingUnsubscribe) {
+      existingUnsubscribe();
+    }
+
+    // Set up new listener
+    const unsubscribe = this.p2pService.onMessage(contactId, async (messageData: string) => {
+      await this.handleIncomingMessage(messageData, contactId);
+    });
+
+    this.messageUnsubscribers.set(contactId, unsubscribe);
+  }
+
+  /**
+   * Handle incoming message from P2P connection
+   */
+  private async handleIncomingMessage(messageData: string, contactId: string): Promise<void> {
+    const user = this.userService.currentUser();
+    if (!user) {
+      return;
+    }
+
+    try {
+      // Parse message payload (will decrypt in Phase 6)
+      const payload = JSON.parse(messageData);
+      
+      const message: Message = {
+        id: crypto.randomUUID(),
+        senderId: contactId,
+        recipientId: user.id,
+        content: payload.text,
+        attachment: payload.attachment,
+        timestamp: new Date(payload.timestamp || Date.now()),
+        encrypted: false, // Will be true when encryption is implemented
+        delivered: true,
+        read: false
+      };
+
+      // Save to storage
+      await this.storageService.saveMessage(message);
+
+      // Update signals if this is the current contact
+      if (this._currentContactId() === contactId) {
+        this._messages.update(messages => [...messages, message]);
+        await this.markAsRead(contactId);
+      } else {
+        // Increment unread count
+        this.contactService.incrementUnreadCount(contactId);
+      }
+
+      // Update contact's last message timestamp
+      this.contactService.updateContactLastMessage(contactId, message.timestamp);
+    } catch (error) {
+      console.error('Error handling incoming message:', error);
+    }
   }
 
   /**

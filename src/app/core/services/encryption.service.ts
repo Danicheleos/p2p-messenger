@@ -10,6 +10,8 @@ export class EncryptionService {
    * Generate RSA key pair
    */
   async generateKeyPair(): Promise<CryptoKeyPair> {
+    const crypto = window.crypto
+
     return await crypto.subtle.generateKey(
       {
         name: ENCRYPTION_CONFIG.ALGORITHM.NAME,

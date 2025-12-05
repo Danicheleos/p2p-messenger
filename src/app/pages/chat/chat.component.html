@@ -1,6 +1,8 @@
 <app-chat-header
   [title]="selectedContactName()"
+  [connectionState]="connectionState()"
   (menuToggle)="toggleSidebar()"
+  (connectClick)="initiateConnection()"
 ></app-chat-header>
 
 <ion-content [fullscreen]="true" class="chat-content">

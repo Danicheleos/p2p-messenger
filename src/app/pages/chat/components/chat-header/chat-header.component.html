@@ -9,6 +9,17 @@
     </ion-buttons>
     <ion-title>{{ title }}</ion-title>
     <ion-buttons slot="end">
+      @if (connectionState !== 'connected') {
+        <ion-button (click)="onConnectClick()" [color]="connectionStatus().color" size="small">
+          <ion-icon [name]="connectionStatus().icon" slot="start"></ion-icon>
+          {{ connectionStatus().text }}
+        </ion-button>
+      } @else {
+        <ion-button [color]="connectionStatus().color" size="small" disabled>
+          <ion-icon [name]="connectionStatus().icon" slot="start"></ion-icon>
+          {{ connectionStatus().text }}
+        </ion-button>
+      }
       <app-theme-toggle></app-theme-toggle>
       <ion-button (click)="presentPopover($event)" id="user-menu-button">
         <ion-icon name="person" slot="icon-only"></ion-icon>

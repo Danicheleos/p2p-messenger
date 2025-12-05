@@ -10,7 +10,7 @@ import {
   PopoverController
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { person, menu } from 'ionicons/icons';
+import { person, menu, radio, radioOutline } from 'ionicons/icons';
 import { ThemeToggleComponent } from '../../../../shared/components/theme-toggle/theme-toggle.component';
 import { UserMenuComponent } from '../../user-menu.component';
 import { UserService } from '../../../../core/services/user.service';
@@ -36,17 +36,31 @@ import { IS_MOBILE } from '../../../../core/constants/resize.token';
 })
 export class ChatHeaderComponent {
   @Input() title = 'P2P Chat';
+  @Input() connectionState: 'connecting' | 'connected' | 'disconnected' | 'failed' = 'disconnected';
   @Output() menuToggle = new EventEmitter<void>();
+  @Output() connectClick = new EventEmitter<void>();
 
   private router = inject(Router);
   private userService = inject(UserService);
   private popoverController = inject(PopoverController);
 
-  readonly showMenuButton = inject(IS_MOBILE)
+  readonly showMenuButton = inject(IS_MOBILE);
 
-  
+  readonly connectionStatus = computed(() => {
+    switch (this.connectionState) {
+      case 'connected':
+        return { text: 'Connected', color: 'success', icon: 'radio' };
+      case 'connecting':
+        return { text: 'Connecting...', color: 'warning', icon: 'radio-outline' };
+      case 'failed':
+        return { text: 'Connection Failed', color: 'danger', icon: 'radio-outline' };
+      default:
+        return { text: 'Not Connected', color: 'medium', icon: 'radio-outline' };
+    }
+  });
+
   constructor() {
-    addIcons({ person, menu });
+    addIcons({ person, menu, radio, radioOutline });
   }
 
   async presentPopover(event: Event): Promise<void> {
@@ -77,6 +91,10 @@ export class ChatHeaderComponent {
 
   onMenuToggle(): void {
     this.menuToggle.emit();
+  }
+
+  onConnectClick(): void {
+    this.connectClick.emit();
   }
 }
 

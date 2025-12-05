@@ -1,12 +1,14 @@
 import { Component, OnInit, computed, inject, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { IonContent, ModalController } from '@ionic/angular/standalone';
+import { IonContent, ModalController, ToastController } from '@ionic/angular/standalone';
 import { UserService } from '../../core/services/user.service';
 import { ContactService } from '../../core/services/contact.service';
 import { MessageService } from '../../core/services/message.service';
+import { P2PService } from '../../core/services/p2p.service';
 import { APP_CONSTANTS } from '../../core/constants/app.const';
 import { AddContactModalComponent } from '../../shared/components/add-contact-modal/add-contact-modal.component';
+import { SignalingExchangeModalComponent } from '../../shared/components/signaling-exchange-modal/signaling-exchange-modal.component';
 import { SidebarComponent } from './components/sidebar/sidebar.component';
 import { ChatHeaderComponent } from './components/chat-header/chat-header.component';
 import { ChatAreaComponent } from './components/chat-area/chat-area.component';
@@ -28,6 +30,9 @@ export class ChatComponent implements OnInit {
   private userService = inject(UserService);
   private contactService = inject(ContactService);
   private messageService = inject(MessageService);
+  private p2pService = inject(P2PService);
+  private modalController = inject(ModalController);
+  private toastController = inject(ToastController);
 
   readonly currentUser = this.userService.currentUser;
   readonly contacts = this.contactService.contacts;
@@ -36,6 +41,11 @@ export class ChatComponent implements OnInit {
 
   readonly username = computed(() => this.currentUser()?.username || 'User');
   readonly selectedContactName = computed(() => this.selectedContact()?.username || 'P2P Chat');
+  
+  readonly connectionState = computed(() => {
+    const contactId = this.contactService.selectedContactId();
+    return contactId ? this.p2pService.getConnectionState(contactId) : 'disconnected';
+  });
 
   readonly userInitials = computed(() => {
     const username = this.username();
@@ -60,20 +70,6 @@ export class ChatComponent implements OnInit {
   async ngOnInit(): Promise<void> {
     // Load contacts on init
     await this.contactService.loadContacts();
-    
-    // Generate mock contacts if none exist (for testing)
-    if (this.contacts().length === 0) {
-      try {
-        const createdContacts = await this.contactService.generateMockContacts();
-        
-        // Generate mock messages for first contact
-        if (createdContacts.length > 0) {
-          await this.messageService.generateMockMessages(createdContacts[0].id, 5);
-        }
-      } catch (error) {
-        console.error('Error generating mock contacts:', error);
-      }
-    }
   }
 
   onContactSelected(contactId: string): void {
@@ -86,5 +82,63 @@ export class ChatComponent implements OnInit {
 
   toggleSidebar(): void {
     this.sidebarOpen.update(open => !open);
+  }
+
+  /**
+   * Initiate P2P connection for selected contact
+   */
+  async initiateConnection(): Promise<void> {
+    const contactId = this.contactService.selectedContactId();
+    if (!contactId) {
+      await this.showToast('Please select a contact first', 'warning');
+      return;
+    }
+
+    try {
+      // Create offer
+      const signalingData = await this.p2pService.sendOffer(contactId);
+      
+      // Export signaling data
+      const exportData = this.p2pService.exportSignalingData(contactId);
+      
+      // Open signaling exchange modal
+      await this.openSignalingModal(contactId, exportData);
+    } catch (error) {
+      console.error('Error initiating connection:', error);
+      await this.showToast('Failed to initiate connection', 'danger');
+    }
+  }
+
+  /**
+   * Open signaling exchange modal
+   */
+  async openSignalingModal(contactId: string, exportData: string | null): Promise<void> {
+    const modal = await this.modalController.create({
+      component: SignalingExchangeModalComponent,
+      componentProps: {
+        contactId,
+        exportDataInput: exportData
+      }
+    });
+
+    await modal.present();
+
+    const { data } = await modal.onDidDismiss();
+    if (data) {
+      await this.showToast('Connection data exchanged successfully', 'success');
+    }
+  }
+
+  /**
+   * Show toast notification
+   */
+  private async showToast(message: string, color: 'success' | 'danger' | 'warning' = 'success'): Promise<void> {
+    const toast = await this.toastController.create({
+      message,
+      duration: 2000,
+      color,
+      position: 'bottom'
+    });
+    await toast.present();
   }
 }

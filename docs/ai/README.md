@@ -13,6 +13,7 @@ This directory contains implementation logs for each development phase of the P2
 - [Phase 2: Authentication](./phase-2-authentication.md) - ✅ Completed
 - [Phase 3: UI Components](./phase-3-ui-components.md) - ✅ Completed
 - [Phase 4: Contact Management](./phase-4-contact-management.md) - ✅ Completed
+- [Phase 5: P2P Communication](./phase-5-p2p-communication.md) - ✅ Completed
 
 ## Usage
 After completing each phase, create a new markdown file documenting:
