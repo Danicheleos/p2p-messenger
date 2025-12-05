@@ -1,12 +1,12 @@
 <main class="chat-area">
   @if (hasSelectedContact()) {
     <app-messages-container
-      [messages]="messages"
+      [messages]="messages()"
       [currentUserId]="currentUserId"
     ></app-messages-container>
 
     <app-message-input
-      [isSending]="isSending"
+      [isSending]="isSending()"
       (sendMessage)="onSendMessage($event)"
     ></app-message-input>
   } @else {

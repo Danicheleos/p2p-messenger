@@ -11,7 +11,7 @@ import { UserService } from '../../../core/services/user.service';
   standalone: true,
   imports: [CommonModule, IonItem, IonLabel, IonAvatar, IonImg, IonIcon],
   template: `
-    <div [class]="messageClass">
+    <div [class]="messageClass()">
       <div class="message-content">
         @if (message.attachment) {
           <div class="attachment-container">

@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   IonHeader,
@@ -13,6 +13,10 @@ import { addIcons } from 'ionicons';
 import { person, menu } from 'ionicons/icons';
 import { ThemeToggleComponent } from '../../../../shared/components/theme-toggle/theme-toggle.component';
 import { UserMenuComponent } from '../../user-menu.component';
+import { UserService } from '../../../../core/services/user.service';
+import { Router } from '@angular/router';
+import { APP_CONSTANTS } from '../../../../core/constants/app.const';
+import { IS_MOBILE } from '../../../../core/constants/resize.token';
 
 @Component({
   selector: 'app-chat-header',
@@ -32,12 +36,15 @@ import { UserMenuComponent } from '../../user-menu.component';
 })
 export class ChatHeaderComponent {
   @Input() title = 'P2P Chat';
-  @Input() showMenuButton = false;
   @Output() menuToggle = new EventEmitter<void>();
-  @Output() logout = new EventEmitter<void>();
 
+  private router = inject(Router);
+  private userService = inject(UserService);
   private popoverController = inject(PopoverController);
 
+  readonly showMenuButton = inject(IS_MOBILE)
+
+  
   constructor() {
     addIcons({ person, menu });
   }
@@ -54,7 +61,17 @@ export class ChatHeaderComponent {
 
     const { data } = await popover.onDidDismiss();
     if (data?.action === 'logout') {
-      this.logout.emit();
+      this.logout();
+    }
+  }
+
+  async logout(): Promise<void> {
+    try {
+      await this.userService.logout();
+      this.router.navigate(['/login']);
+    } catch (error) {
+      console.error('Error during logout:', error);
+      this.router.navigate(['/login']);
     }
   }
 

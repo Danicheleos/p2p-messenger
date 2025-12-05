@@ -4,12 +4,15 @@ import {
   IonList,
   IonSearchbar,
   IonButton,
-  IonIcon
+  IonIcon,
+  ModalController
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { add } from 'ionicons/icons';
 import { ContactService } from '../../../../core/services/contact.service';
 import { ContactItemComponent } from '../../../../shared/components/contact-item/contact-item.component';
+import { AddContactModalComponent } from '../../../../shared/components/add-contact-modal/add-contact-modal.component';
+import { MessageService } from '../../../../core/services/message.service';
 
 @Component({
   selector: 'app-sidebar',
@@ -30,11 +33,11 @@ export class SidebarComponent {
   @Input() username = '';
   @Input() userInitials = '';
   @Output() contactSelected = new EventEmitter<string>();
-  @Output() contactDeleted = new EventEmitter<{ id: string; username: string }>();
-  @Output() addContactClicked = new EventEmitter<void>();
   @Output() searchChanged = new EventEmitter<string>();
 
+  private modalController = inject(ModalController);
   private contactService = inject(ContactService);
+  private messageService = inject(MessageService);
 
   readonly contacts = this.contactService.contacts;
   readonly selectedContactId = this.contactService.selectedContactId;
@@ -60,12 +63,48 @@ export class SidebarComponent {
     this.contactSelected.emit(contactId);
   }
 
-  onContactDelete(contactId: string, contactUsername: string): void {
-    this.contactDeleted.emit({ id: contactId, username: contactUsername });
+  async onContactDelete(contactId: string, contactUsername: string): Promise<void> {
+   const confirmed = confirm(`Are you sure you want to delete ${contactUsername}? This action cannot be undone.`);
+    
+    if (confirmed) {
+      try {
+        await this.contactService.removeContact(contactId);
+        // Clear messages if this was the selected contact
+        if (this.selectedContactId() === contactId) {
+          this.messageService.clearMessages();
+        }
+      } catch (error) {
+        console.error('Error deleting contact:', error);
+        alert('Failed to delete contact. Please try again.');
+      }
+    }
   }
 
-  onAddContact(): void {
-    this.addContactClicked.emit();
+
+  async onAddContact(): Promise<void> {
+    const modal = await this.modalController.create({
+      component: AddContactModalComponent,
+      presentingElement: await this.modalController.getTop()
+    });
+
+    await modal.present();
+
+    const { data } = await modal.onDidDismiss();
+
+    if (data?.username && data?.publicKey) {
+      try {
+        await this.contactService.addContact(data.username, data.publicKey);
+        // Optionally select the newly added contact
+        const contacts = this.contactService.contacts();
+        const newContact = contacts.find(c => c.username === data.username);
+        if (newContact) {
+          this.onContactClick(newContact.id);
+        }
+      } catch (error: any) {
+        console.error('Error adding contact:', error);
+        alert(error.message || 'Failed to add contact. Please try again.');
+      }
+    }
   }
 }
 

@@ -1,8 +1,6 @@
 <app-chat-header
   [title]="selectedContactName()"
-  [showMenuButton]="showMenuButton()"
   (menuToggle)="toggleSidebar()"
-  (logout)="logout()"
 ></app-chat-header>
 
 <ion-content [fullscreen]="true" class="chat-content">
@@ -12,16 +10,10 @@
       [username]="username()"
       [userInitials]="userInitials()"
       (contactSelected)="onContactSelected($event)"
-      (contactDeleted)="onContactDeleted($event)"
-      (addContactClicked)="onAddContact()"
     ></app-sidebar>
 
     <app-chat-area
-      [selectedContact]="selectedContact()"
-      [messages]="messages()"
       [currentUserId]="currentUser()?.id || ''"
-      [isSending]="isSending()"
-      (sendMessage)="onSendMessage($event)"
     ></app-chat-area>
 
     <!-- Sidebar Overlay (Mobile) -->
