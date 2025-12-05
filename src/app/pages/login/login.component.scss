@@ -149,7 +149,8 @@
 }
 
 // Responsive design
-@media (max-width: 768px) {
+// Mobile: < 768px
+@media (max-width: 767px) {
   .login-container {
     padding: 1rem;
   }

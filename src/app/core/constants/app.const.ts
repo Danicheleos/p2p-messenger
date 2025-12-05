@@ -16,6 +16,10 @@ export const APP_CONSTANTS = {
     ICE_SERVERS: [
       { urls: 'stun:stun.l.google.com:19302' }
     ]
+  },
+  BREAKPOINTS: {
+    MOBILE_MAX: 767, // Mobile: < 768px
+    DESKTOP_MIN: 768 // Desktop: >= 768px
   }
 } as const;
 
