@@ -20,6 +20,7 @@ import { addIcons } from 'ionicons';
 import { close, checkmark, alertCircle, informationCircle } from 'ionicons/icons';
 import { APP_CONSTANTS } from '../../../core/constants/app.const';
 import { EncryptionService } from '../../../core/services/encryption.service';
+import { P2PService, ConnectionHandshakeData } from '../../../core/services/p2p.service';
 
 @Component({
   selector: 'app-add-contact-modal',
@@ -99,6 +100,11 @@ import { EncryptionService } from '../../../core/services/encryption.service';
         <div class="info-message">
           <ion-icon name="information-circle"></ion-icon>
           <p>Ask your contact to share their public key. You can paste it here to add them as a contact.</p>
+          @if (hasConnectionData) {
+            <p style="margin-top: 0.5rem; font-weight: 600; color: var(--ion-color-success);">
+              ✓ Connection data detected! Connection will be initiated automatically after adding contact.
+            </p>
+          }
         </div>
 
         @if (error) {
@@ -199,8 +205,10 @@ import { EncryptionService } from '../../../core/services/encryption.service';
 export class AddContactModalComponent {
   private modalController = inject(ModalController);
   private encryptionService = inject(EncryptionService);
+  private p2pService = inject(P2PService);
 
   username = '';
+  userId = '';
   publicKey = '';
   isLoading = false;
   error = '';
@@ -208,6 +216,8 @@ export class AddContactModalComponent {
   usernameError = '';
   showPublicKeyError = false;
   publicKeyError = '';
+  connectionData: any = null; // Store connection data if present in handshake
+  hasConnectionData = false;
 
   readonly APP_CONSTANTS = APP_CONSTANTS;
 
@@ -223,6 +233,56 @@ export class AddContactModalComponent {
   onPublicKeyInput(): void {
     this.showPublicKeyError = false;
     this.error = '';
+    
+    // Try to parse as handshake data when user pastes
+    this.tryParseHandshakeData();
+  }
+
+  /**
+   * Try to parse pasted data as connection handshake data
+   */
+  private tryParseHandshakeData(): void {
+    const trimmed = this.publicKey.trim();
+    if (!trimmed) {
+      this.connectionData = null;
+      this.hasConnectionData = false;
+      return;
+    }
+
+    // Try to parse as JSON (handshake data format)
+    try {
+      const parsed = this.p2pService.parseHandshakeData(trimmed);
+      if (parsed) {
+        if (parsed.userId) {
+          this.userId = parsed.userId
+        } else {
+          throw new Error('No userId found')
+        }
+        // Auto-populate fields from handshake data
+        if (parsed.username && !this.username) {
+          this.username = parsed.username;
+          this.validateUsername();
+        }
+        
+        if (parsed.publicKey) {
+          this.publicKey = parsed.publicKey;
+          this.validatePublicKey();
+        }
+
+        // Store connection data if present
+        if (parsed.connectionData && parsed.connectionData.length > 0) {
+          this.connectionData = parsed.connectionData;
+          this.hasConnectionData = true;
+        } else {
+          this.connectionData = null;
+          this.hasConnectionData = false;
+        }
+      }
+    } catch (error) {
+      // Not handshake data format, treat as plain public key
+      this.connectionData = null;
+      this.hasConnectionData = false;
+    }
   }
 
   validateUsername(): void {
@@ -312,10 +372,12 @@ export class AddContactModalComponent {
     this.isLoading = true;
 
     try {
-      // Return the contact data to the parent
+      // Return the contact data to the parent, including connection data if present
       await this.modalController.dismiss({
+        userId: this.userId,
         username: trimmedUsername,
-        publicKey: trimmedPublicKey
+        publicKey: trimmedPublicKey,
+        connectionData: this.connectionData || null
       });
     } catch (error: any) {
       console.error('Error in modal dismiss:', error);

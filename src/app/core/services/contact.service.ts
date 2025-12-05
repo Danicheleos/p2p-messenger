@@ -44,7 +44,7 @@ export class ContactService {
   /**
    * Add a new contact
    */
-  async addContact(username: string, publicKey: string): Promise<Contact> {
+  async addContact(userId: string, username: string, publicKey: string): Promise<Contact> {
     const user = this.userService.currentUser();
     if (!user) {
       throw new Error('User must be authenticated to add contacts');
@@ -52,14 +52,14 @@ export class ContactService {
 
     // Check if contact already exists
     const existingContact = this._contacts().find(
-      c => c.username === username && c.userId === user.id
+      c => c.username === username && c.userId === userId
     );
     if (existingContact) {
       throw new Error('Contact already exists');
     }
 
     const contact: Contact = {
-      id: crypto.randomUUID(),
+      id: userId,
       username,
       publicKey,
       userId: user.id,

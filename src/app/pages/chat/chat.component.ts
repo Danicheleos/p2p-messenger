@@ -7,7 +7,6 @@ import { ContactService } from '../../core/services/contact.service';
 import { MessageService } from '../../core/services/message.service';
 import { P2PService } from '../../core/services/p2p.service';
 import { APP_CONSTANTS } from '../../core/constants/app.const';
-import { AddContactModalComponent } from '../../shared/components/add-contact-modal/add-contact-modal.component';
 import { SignalingExchangeModalComponent } from '../../shared/components/signaling-exchange-modal/signaling-exchange-modal.component';
 import { SidebarComponent } from './components/sidebar/sidebar.component';
 import { ChatHeaderComponent } from './components/chat-header/chat-header.component';
