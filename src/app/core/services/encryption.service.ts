@@ -145,5 +145,214 @@ export class EncryptionService {
     }
     return bytes.buffer;
   }
+
+  /**
+   * Encrypt message using hybrid encryption (AES-GCM + RSA-OAEP)
+   * This allows encrypting messages larger than RSA-OAEP's 245-byte limit
+   * 
+   * @param message - Plain text message to encrypt
+   * @param publicKey - Recipient's public key (RSA)
+   * @returns Encrypted data structure: { encryptedData, encryptedKey, iv }
+   */
+  async encryptMessageHybrid(message: string, publicKey: CryptoKey): Promise<{
+    encryptedData: string;
+    encryptedKey: string;
+    iv: string;
+  }> {
+    // Generate a random AES-GCM key
+    const aesKey = await crypto.subtle.generateKey(
+      {
+        name: 'AES-GCM',
+        length: 256
+      },
+      true,
+      ['encrypt', 'decrypt']
+    );
+
+    // Generate a random IV (Initialization Vector)
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+
+    // Encrypt the message with AES-GCM
+    const encoder = new TextEncoder();
+    const messageData = encoder.encode(message);
+    const encryptedData = await crypto.subtle.encrypt(
+      {
+        name: 'AES-GCM',
+        iv: iv
+      },
+      aesKey,
+      messageData
+    );
+
+    // Export and encrypt the AES key with RSA-OAEP
+    const exportedAesKey = await crypto.subtle.exportKey('raw', aesKey);
+    const encryptedKey = await crypto.subtle.encrypt(
+      { name: ENCRYPTION_CONFIG.ALGORITHM.NAME },
+      publicKey,
+      exportedAesKey
+    );
+
+    return {
+      encryptedData: this.arrayBufferToBase64(encryptedData),
+      encryptedKey: this.arrayBufferToBase64(encryptedKey),
+      iv: this.arrayBufferToBase64(iv.buffer)
+    };
+  }
+
+  /**
+   * Decrypt message using hybrid decryption (AES-GCM + RSA-OAEP)
+   * 
+   * @param encryptedData - Encrypted message data (base64)
+   * @param encryptedKey - Encrypted AES key (base64)
+   * @param iv - Initialization vector (base64)
+   * @param privateKey - Recipient's private key (RSA)
+   * @returns Decrypted plain text message
+   */
+  async decryptMessageHybrid(
+    encryptedData: string,
+    encryptedKey: string,
+    iv: string,
+    privateKey: CryptoKey
+  ): Promise<string> {
+    // Decrypt the AES key with RSA-OAEP
+    const encryptedKeyBuffer = this.base64ToArrayBuffer(encryptedKey);
+    const decryptedKeyBuffer = await crypto.subtle.decrypt(
+      { name: ENCRYPTION_CONFIG.ALGORITHM.NAME },
+      privateKey,
+      encryptedKeyBuffer
+    );
+
+    // Import the AES key
+    const aesKey = await crypto.subtle.importKey(
+      'raw',
+      decryptedKeyBuffer,
+      {
+        name: 'AES-GCM'
+      },
+      true,
+      ['encrypt', 'decrypt']
+    );
+
+    // Decrypt the message with AES-GCM
+    const ivBuffer = this.base64ToArrayBuffer(iv);
+    const encryptedDataBuffer = this.base64ToArrayBuffer(encryptedData);
+    const decryptedData = await crypto.subtle.decrypt(
+      {
+        name: 'AES-GCM',
+        iv: new Uint8Array(ivBuffer)
+      },
+      aesKey,
+      encryptedDataBuffer
+    );
+
+    const decoder = new TextDecoder();
+    return decoder.decode(decryptedData);
+  }
+
+  /**
+   * Encrypt attachment data using hybrid encryption
+   * 
+   * @param data - Base64 encoded attachment data
+   * @param publicKey - Recipient's public key (RSA)
+   * @returns Encrypted attachment data structure
+   */
+  async encryptAttachmentHybrid(
+    data: string,
+    publicKey: CryptoKey
+  ): Promise<{
+    encryptedData: string;
+    encryptedKey: string;
+    iv: string;
+  }> {
+    // Generate a random AES-GCM key
+    const aesKey = await crypto.subtle.generateKey(
+      {
+        name: 'AES-GCM',
+        length: 256
+      },
+      true,
+      ['encrypt', 'decrypt']
+    );
+
+    // Generate a random IV
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+
+    // Convert base64 data to ArrayBuffer
+    const dataBuffer = this.base64ToArrayBuffer(data.split(',')[1] || data); // Remove data URL prefix if present
+
+    // Encrypt the attachment data with AES-GCM
+    const encryptedData = await crypto.subtle.encrypt(
+      {
+        name: 'AES-GCM',
+        iv: iv
+      },
+      aesKey,
+      dataBuffer
+    );
+
+    // Export and encrypt the AES key with RSA-OAEP
+    const exportedAesKey = await crypto.subtle.exportKey('raw', aesKey);
+    const encryptedKey = await crypto.subtle.encrypt(
+      { name: ENCRYPTION_CONFIG.ALGORITHM.NAME },
+      publicKey,
+      exportedAesKey
+    );
+
+    return {
+      encryptedData: this.arrayBufferToBase64(encryptedData),
+      encryptedKey: this.arrayBufferToBase64(encryptedKey),
+      iv: this.arrayBufferToBase64(iv.buffer)
+    };
+  }
+
+  /**
+   * Decrypt attachment data using hybrid decryption
+   * 
+   * @param encryptedData - Encrypted attachment data (base64)
+   * @param encryptedKey - Encrypted AES key (base64)
+   * @param iv - Initialization vector (base64)
+   * @param privateKey - Recipient's private key (RSA)
+   * @returns Decrypted base64 data (without data URL prefix)
+   */
+  async decryptAttachmentHybrid(
+    encryptedData: string,
+    encryptedKey: string,
+    iv: string,
+    privateKey: CryptoKey
+  ): Promise<string> {
+    // Decrypt the AES key with RSA-OAEP
+    const encryptedKeyBuffer = this.base64ToArrayBuffer(encryptedKey);
+    const decryptedKeyBuffer = await crypto.subtle.decrypt(
+      { name: ENCRYPTION_CONFIG.ALGORITHM.NAME },
+      privateKey,
+      encryptedKeyBuffer
+    );
+
+    // Import the AES key
+    const aesKey = await crypto.subtle.importKey(
+      'raw',
+      decryptedKeyBuffer,
+      {
+        name: 'AES-GCM'
+      },
+      true,
+      ['encrypt', 'decrypt']
+    );
+
+    // Decrypt the attachment data with AES-GCM
+    const ivBuffer = this.base64ToArrayBuffer(iv);
+    const encryptedDataBuffer = this.base64ToArrayBuffer(encryptedData);
+    const decryptedData = await crypto.subtle.decrypt(
+      {
+        name: 'AES-GCM',
+        iv: new Uint8Array(ivBuffer)
+      },
+      aesKey,
+      encryptedDataBuffer
+    );
+
+    // Convert back to base64 (without data URL prefix - caller will add it)
+    return this.arrayBufferToBase64(decryptedData);
+  }
 }
 

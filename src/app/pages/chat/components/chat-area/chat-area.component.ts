@@ -40,15 +40,16 @@ export class ChatAreaComponent {
 
   async onSendMessage(event: { text: string; file?: File }): Promise<void> {
     const selectedContact = this.selectedContact();
-    if (!selectedContact || !event.text.trim()) return;
+    if (!selectedContact || (!event.text.trim() && !event.file)) return;
 
     this.isSending.set(true);
 
     try {
-      await this.messageService.sendMessage(event.text, selectedContact.id, event.file);
+      await this.messageService.sendMessage(event.text || '', selectedContact.id, event.file);
     } catch (error) {
+      // Error already handled by ErrorService in MessageService
+      // Just log for debugging
       console.error('Error sending message:', error);
-      alert('Failed to send message. Please try again.');
     } finally {
       this.isSending.set(false);
     }
