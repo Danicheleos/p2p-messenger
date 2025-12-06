@@ -39,7 +39,6 @@ import { P2PService, SignalingData } from '../../../core/services/p2p.service';
     IonIcon,
     IonTextarea,
     IonItem,
-    IonLabel,
     IonText
   ],
   template: `

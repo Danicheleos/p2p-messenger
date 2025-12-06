@@ -3,12 +3,13 @@
  */
 export const STORAGE_KEYS = {
   DB_NAME: 'p2p-chat-db',
-  DB_VERSION: 1,
+  DB_VERSION: 2,
   STORES: {
     USERS: 'users',
     CONTACTS: 'contacts',
     MESSAGES: 'messages',
-    CONVERSATIONS: 'conversations'
+    CONVERSATIONS: 'conversations',
+    CONNECTION_DATA: 'connectionData'
   },
   LOCAL_STORAGE: {
     THEME: 'p2p-chat-theme',

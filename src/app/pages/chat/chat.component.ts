@@ -60,6 +60,10 @@ export class ChatComponent implements OnInit {
       const contactId = this.contactService.selectedContactId();
       if (contactId) {
         this.messageService.loadMessages(contactId);
+        // Automatically attempt to connect
+        this.p2pService.autoConnect(contactId).catch(error => {
+          console.error('Error in auto-connect:', error);
+        });
       } else {
         this.messageService.clearMessages();
       }

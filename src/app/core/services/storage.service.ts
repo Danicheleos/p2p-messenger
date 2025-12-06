@@ -37,6 +37,21 @@ interface P2PChatDB extends DBSchema {
     };
     indexes: { userId: string; contactId: string; lastMessageTimestamp: Date };
   };
+  connectionData: {
+    key: string;
+    value: {
+      contactId: string;
+      userId: string;
+      signalingData: Array<{
+        type: 'offer' | 'answer' | 'ice-candidate';
+        contactId: string;
+        data: any;
+        timestamp: number;
+      }>;
+      lastUpdated: Date;
+    };
+    indexes: { contactId: string; userId: string };
+  };
 }
 
 /**
@@ -91,6 +106,15 @@ export class StorageService {
           conversationStore.createIndex('userId', 'userId');
           conversationStore.createIndex('contactId', 'contactId');
           conversationStore.createIndex('lastMessageTimestamp', 'lastMessageTimestamp');
+        }
+
+        // Connection data store
+        if (!db.objectStoreNames.contains(STORAGE_KEYS.STORES.CONNECTION_DATA)) {
+          const connectionStore = db.createObjectStore(STORAGE_KEYS.STORES.CONNECTION_DATA, {
+            keyPath: 'contactId'
+          });
+          connectionStore.createIndex('contactId', 'contactId');
+          connectionStore.createIndex('userId', 'userId');
         }
       }
     });
@@ -191,6 +215,67 @@ export class StorageService {
   async deleteContact(contactId: string): Promise<void> {
     await this.ensureDb();
     await this.db!.delete(STORAGE_KEYS.STORES.CONTACTS, contactId);
+  }
+
+  /**
+   * Save connection data for a contact
+   */
+  async saveConnectionData(contactId: string, userId: string, signalingData: Array<{
+    type: 'offer' | 'answer' | 'ice-candidate';
+    contactId: string;
+    data: any;
+    timestamp: number;
+  }>): Promise<void> {
+    await this.ensureDb();
+    await this.db!.put(STORAGE_KEYS.STORES.CONNECTION_DATA, {
+      contactId,
+      userId,
+      signalingData,
+      lastUpdated: new Date()
+    });
+  }
+
+  /**
+   * Get connection data for a contact
+   */
+  async getConnectionData(contactId: string): Promise<Array<{
+    type: 'offer' | 'answer' | 'ice-candidate';
+    contactId: string;
+    data: any;
+    timestamp: number;
+  }> | null> {
+    await this.ensureDb();
+    const data = await this.db!.get(STORAGE_KEYS.STORES.CONNECTION_DATA, contactId);
+    return data ? data.signalingData : null;
+  }
+
+  /**
+   * Add ICE candidate to stored connection data
+   */
+  async addIceCandidateToConnectionData(contactId: string, userId: string, candidate: {
+    type: 'offer' | 'answer' | 'ice-candidate';
+    contactId: string;
+    data: any;
+    timestamp: number;
+  }): Promise<void> {
+    await this.ensureDb();
+    const existing = await this.db!.get(STORAGE_KEYS.STORES.CONNECTION_DATA, contactId);
+    const signalingData = existing ? [...existing.signalingData, candidate] : [candidate];
+    
+    await this.db!.put(STORAGE_KEYS.STORES.CONNECTION_DATA, {
+      contactId,
+      userId,
+      signalingData,
+      lastUpdated: new Date()
+    });
+  }
+
+  /**
+   * Clear connection data for a contact
+   */
+  async clearConnectionData(contactId: string): Promise<void> {
+    await this.ensureDb();
+    await this.db!.delete(STORAGE_KEYS.STORES.CONNECTION_DATA, contactId);
   }
 
   /**

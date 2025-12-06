@@ -23,7 +23,6 @@ import { APP_CONSTANTS } from '../../../core/constants/app.const';
     IonInput,
     IonButton,
     IonIcon,
-    IonLabel,
     IonImg
   ],
   template: `

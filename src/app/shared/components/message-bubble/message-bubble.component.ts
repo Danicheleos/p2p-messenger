@@ -1,6 +1,6 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { IonItem, IonLabel, IonAvatar, IonImg, IonIcon } from '@ionic/angular/standalone';
+import { IonImg, IonIcon } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { checkmarkDone } from 'ionicons/icons';
 import { Message } from '../../../core/interfaces';
@@ -9,7 +9,7 @@ import { UserService } from '../../../core/services/user.service';
 @Component({
   selector: 'app-message-bubble',
   standalone: true,
-  imports: [CommonModule, IonItem, IonLabel, IonAvatar, IonImg, IonIcon],
+  imports: [CommonModule, IonImg, IonIcon],
   template: `
     <div [class]="messageClass()">
       <div class="message-content">

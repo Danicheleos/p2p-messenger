@@ -1,6 +1,8 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { APP_CONSTANTS } from '../constants/app.const';
 import { P2PConnection } from '../interfaces/p2p-connection.interface';
+import { StorageService } from './storage.service';
+import { UserService } from './user.service';
 
 /**
  * Signaling data structure for manual exchange
@@ -29,9 +31,13 @@ export interface ConnectionHandshakeData {
  */
 @Injectable({ providedIn: 'root' })
 export class P2PService {
+  private storageService = inject(StorageService);
+  private userService = inject(UserService);
+  
   private connections = new Map<string, P2PConnection>();
   private messageCallbacks = new Map<string, Set<(message: string) => void>>();
   private pendingSignalingData = new Map<string, SignalingData[]>();
+  private iceCandidateCallbacks = new Map<string, (candidate: SignalingData) => void>();
 
   private _connectionStates = signal<Map<string, P2PConnection['connectionState']>>(new Map());
   private _iceStates = signal<Map<string, RTCIceConnectionState>>(new Map());
@@ -78,10 +84,10 @@ export class P2PService {
     // Set up data channel event handlers
     this.setupDataChannel(dataChannel, contactId);
 
-    // Set up ICE candidate handler
-    pc.onicecandidate = (event) => {
+    // Set up ICE candidate handler - automatically store and notify
+    pc.onicecandidate = async (event) => {
       if (event.candidate) {
-        this.storeIceCandidate(event.candidate, contactId);
+        await this.handleIceCandidateGeneration(event.candidate, contactId);
       }
     };
 
@@ -117,7 +123,7 @@ export class P2PService {
   }
 
   /**
-   * Create and send an offer for a contact
+   * Create and send an offer for a contact - automatically store
    */
   async sendOffer(contactId: string): Promise<SignalingData> {
     const pc = await this.createConnection(contactId);
@@ -131,14 +137,24 @@ export class P2PService {
       timestamp: Date.now()
     };
 
-    // Store for manual exchange
+    // Store in memory
     this.storeSignalingData(contactId, signalingData);
+
+    // Store in IndexedDB for persistence
+    try {
+      const user = this.userService.currentUser();
+      if (user) {
+        await this.storageService.saveConnectionData(contactId, user.id, [signalingData]);
+      }
+    } catch (error) {
+      console.error('Error storing offer:', error);
+    }
 
     return signalingData;
   }
 
   /**
-   * Handle an incoming offer
+   * Handle an incoming offer - automatically store answer
    */
   async handleOffer(offer: RTCSessionDescriptionInit, contactId: string): Promise<SignalingData> {
     const pc = await this.createConnection(contactId);
@@ -154,14 +170,26 @@ export class P2PService {
       timestamp: Date.now()
     };
 
-    // Store for manual exchange
+    // Store in memory
     this.storeSignalingData(contactId, signalingData);
+
+    // Store in IndexedDB for persistence
+    try {
+      const user = this.userService.currentUser();
+      if (user) {
+        const existingData = await this.storageService.getConnectionData(contactId);
+        const updatedData = existingData ? [...existingData, signalingData] : [signalingData];
+        await this.storageService.saveConnectionData(contactId, user.id, updatedData);
+      }
+    } catch (error) {
+      console.error('Error storing answer:', error);
+    }
 
     return signalingData;
   }
 
   /**
-   * Handle an incoming answer
+   * Handle an incoming answer - automatically store
    */
   async handleAnswer(answer: RTCSessionDescriptionInit, contactId: string): Promise<void> {
     const connection = this.connections.get(contactId);
@@ -170,29 +198,58 @@ export class P2PService {
     }
 
     await connection.peerConnection.setRemoteDescription(answer);
+
+    // Store answer in IndexedDB
+    try {
+      const user = this.userService.currentUser();
+      if (user) {
+        const signalingData: SignalingData = {
+          type: 'answer',
+          contactId,
+          data: answer,
+          timestamp: Date.now()
+        };
+        const existingData = await this.storageService.getConnectionData(contactId);
+        const updatedData = existingData ? [...existingData, signalingData] : [signalingData];
+        await this.storageService.saveConnectionData(contactId, user.id, updatedData);
+      }
+    } catch (error) {
+      console.error('Error storing answer:', error);
+    }
   }
 
   /**
-   * Handle an incoming ICE candidate
+   * Handle an incoming ICE candidate - automatically save and process
    */
   async handleIceCandidate(candidate: RTCIceCandidateInit, contactId: string): Promise<void> {
-    const connection = this.connections.get(contactId);
-    if (!connection) {
-      // Store for later if connection not ready
-      const signalingData: SignalingData = {
-        type: 'ice-candidate',
-        contactId,
-        data: candidate,
-        timestamp: Date.now()
-      };
-      this.storeSignalingData(contactId, signalingData);
-      return;
+    const signalingData: SignalingData = {
+      type: 'ice-candidate',
+      contactId,
+      data: candidate,
+      timestamp: Date.now()
+    };
+
+    // Store in memory
+    this.storeSignalingData(contactId, signalingData);
+
+    // Store in IndexedDB for persistence
+    try {
+      const user = this.userService.currentUser();
+      if (user) {
+        await this.storageService.addIceCandidateToConnectionData(contactId, user.id, signalingData);
+      }
+    } catch (error) {
+      console.error('Error storing incoming ICE candidate:', error);
     }
 
-    try {
-      await connection.peerConnection.addIceCandidate(candidate);
-    } catch (error) {
-      console.error('Error adding ICE candidate:', error);
+    // Process immediately if connection exists
+    const connection = this.connections.get(contactId);
+    if (connection) {
+      try {
+        await connection.peerConnection.addIceCandidate(candidate);
+      } catch (error) {
+        console.error('Error adding ICE candidate:', error);
+      }
     }
   }
 
@@ -279,12 +336,21 @@ export class P2PService {
   }
 
   /**
-   * Import signaling data from manual exchange
+   * Import signaling data from manual exchange and automatically process it
    */
-  async importSignalingData(jsonData: string): Promise<void> {
+  async importSignalingData(jsonData: string, contactId?: string): Promise<void> {
     try {
       const dataArray: SignalingData[] = JSON.parse(jsonData);
       
+      // Store connection data if contactId is provided
+      if (contactId) {
+        const user = this.userService.currentUser();
+        if (user) {
+          await this.storageService.saveConnectionData(contactId, user.id, dataArray);
+        }
+      }
+      
+      // Process each signaling data item
       for (const signalingData of dataArray) {
         await this.processSignalingData(signalingData);
       }
@@ -292,6 +358,37 @@ export class P2PService {
       console.error('Error importing signaling data:', error);
       throw new Error('Invalid signaling data format');
     }
+  }
+
+  /**
+   * Automatically load and process stored connection data for a contact
+   */
+  async autoConnect(contactId: string): Promise<void> {
+    try {
+      const storedData = await this.storageService.getConnectionData(contactId);
+      if (storedData && storedData.length > 0) {
+        console.log(`Auto-connecting to contact ${contactId} with stored connection data`);
+        
+        // Process stored connection data
+        for (const signalingData of storedData) {
+          await this.processSignalingData(signalingData);
+        }
+      }
+    } catch (error) {
+      console.error('Error in auto-connect:', error);
+    }
+  }
+
+  /**
+   * Register callback for ICE candidate generation (for automatic sending)
+   */
+  onIceCandidateGenerated(contactId: string, callback: (candidate: SignalingData) => void): () => void {
+    this.iceCandidateCallbacks.set(contactId, callback);
+    
+    // Return unsubscribe function
+    return () => {
+      this.iceCandidateCallbacks.delete(contactId);
+    };
   }
 
   /**
@@ -384,9 +481,9 @@ export class P2PService {
   }
 
   /**
-   * Store ICE candidate for manual exchange
+   * Handle ICE candidate generation - automatically store and notify
    */
-  private storeIceCandidate(candidate: RTCIceCandidate, contactId: string): void {
+  private async handleIceCandidateGeneration(candidate: RTCIceCandidate, contactId: string): Promise<void> {
     const signalingData: SignalingData = {
       type: 'ice-candidate',
       contactId,
@@ -394,7 +491,24 @@ export class P2PService {
       timestamp: Date.now()
     };
 
+    // Store in memory
     this.storeSignalingData(contactId, signalingData);
+
+    // Store in IndexedDB for persistence
+    try {
+      const user = this.userService.currentUser();
+      if (user) {
+        await this.storageService.addIceCandidateToConnectionData(contactId, user.id, signalingData);
+      }
+    } catch (error) {
+      console.error('Error storing ICE candidate:', error);
+    }
+
+    // Notify callback if registered (for automatic sending)
+    const callback = this.iceCandidateCallbacks.get(contactId);
+    if (callback) {
+      callback(signalingData);
+    }
   }
 
   /**

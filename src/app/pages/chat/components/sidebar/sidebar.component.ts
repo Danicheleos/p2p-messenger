@@ -66,8 +66,30 @@ export class SidebarComponent {
     this.searchChanged.emit(this._searchQuery);
   }
 
-  onContactClick(contactId: string): void {
+  async onContactClick(contactId: string): Promise<void> {
     this.contactSelected.emit(contactId);
+    
+    // Automatically attempt to connect if connection data exists
+    try {
+      await this.p2pService.autoConnect(contactId);
+      // Set up automatic ICE candidate exchange
+      this.setupAutoIceCandidateExchange(contactId);
+    } catch (error) {
+      console.error('Error in auto-connect:', error);
+    }
+  }
+
+  /**
+   * Set up automatic ICE candidate exchange for a contact
+   */
+  private setupAutoIceCandidateExchange(contactId: string): void {
+    // Register callback for ICE candidate generation
+    this.p2pService.onIceCandidateGenerated(contactId, async (candidate) => {
+      // Automatically store the candidate (already stored in P2P service)
+      // In a real P2P scenario, this would send the candidate to the contact
+      // For now, we just ensure it's stored and can be retrieved
+      console.log(`ICE candidate generated for contact ${contactId}:`, candidate);
+    });
   }
 
   async onContactDelete(contactId: string, contactUsername: string): Promise<void> {
@@ -114,9 +136,12 @@ export class SidebarComponent {
               contactId: contact.id
             }));
             
-            // Import connection data
+            // Import connection data and automatically process it
             const connectionDataJson = JSON.stringify(updatedConnectionData);
-            await this.p2pService.importSignalingData(connectionDataJson);
+            await this.p2pService.importSignalingData(connectionDataJson, contact.id);
+            
+            // Set up automatic ICE candidate exchange
+            this.setupAutoIceCandidateExchange(contact.id);
             
             await this.showToast('Contact added and connection initiated!', 'success');
           } catch (connectionError) {
