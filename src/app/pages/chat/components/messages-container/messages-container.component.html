@@ -1,13 +1,13 @@
 <div class="messages-container">
-  @if (messages.length === 0) {
+  @if (messages().length === 0) {
     <div class="empty-messages">
       <p>No messages yet. Start the conversation!</p>
     </div>
   } @else {
-    @for (message of messages; track message.id) {
+    @for (message of messages(); track message.id) {
       <app-message-bubble
         [message]="message"
-        [currentUserId]="currentUserId"
+        [currentUserId]="currentUserId()"
       ></app-message-bubble>
     }
   }

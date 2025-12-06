@@ -2,7 +2,7 @@
   @if (hasSelectedContact()) {
     <app-messages-container
       [messages]="messages()"
-      [currentUserId]="currentUserId"
+      [currentUserId]="currentUserId()"
     ></app-messages-container>
 
     <app-message-input

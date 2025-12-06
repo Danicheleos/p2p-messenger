@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit, Input } from '@angular/core';
+import { Component, inject, signal, OnInit, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
@@ -171,8 +171,8 @@ export class SignalingExchangeModalComponent implements OnInit {
   private p2pService = inject(P2PService);
   private toastController = inject(ToastController);
 
-  @Input() contactId: string = '';
-  @Input() exportDataInput: string | null = null;
+  contactId = input.required<string>();
+  exportDataInput = input<string | null>(null);
 
   exportData = signal<string | null>(null);
   importData = signal<string>('');
@@ -185,11 +185,13 @@ export class SignalingExchangeModalComponent implements OnInit {
 
   ngOnInit(): void {
     // Initialize with provided data
-    if (this.exportDataInput) {
-      this.exportData.set(this.exportDataInput);
-    } else if (this.contactId) {
+    const exportDataValue = this.exportDataInput();
+    if (exportDataValue) {
+      this.exportData.set(exportDataValue);
+    } else {
+      const contactIdValue = this.contactId();
       // Try to get export data from P2P service
-      const data = this.p2pService.exportSignalingData(this.contactId);
+      const data = this.p2pService.exportSignalingData(contactIdValue);
       this.exportData.set(data);
     }
   }

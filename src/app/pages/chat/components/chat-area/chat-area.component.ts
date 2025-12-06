@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IonIcon } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
@@ -23,7 +23,7 @@ import { ContactService } from '../../../../core/services/contact.service';
   styleUrl: './chat-area.component.scss'
 })
 export class ChatAreaComponent {
-  @Input() currentUserId = '';
+  currentUserId = input('');
 
   private messageService = inject(MessageService);
   private contactService = inject(ContactService);

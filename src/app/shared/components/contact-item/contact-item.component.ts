@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IonItem, IonLabel, IonAvatar, IonBadge, IonButton, IonIcon } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
@@ -12,7 +12,7 @@ import { Contact } from '../../../core/interfaces';
   template: `
     <ion-item
       [button]="true"
-      [class.selected]="isSelected"
+      [class.selected]="isSelected()"
       (click)="onClick()"
       class="contact-item"
     >
@@ -20,15 +20,15 @@ import { Contact } from '../../../core/interfaces';
         <div class="avatar-placeholder">{{ getInitials() }}</div>
       </ion-avatar>
       <ion-label>
-        <h2>{{ contact.username }}</h2>
-        @if (lastMessage) {
-          <p class="last-message">{{ lastMessage }}</p>
+        <h2>{{ contact().username }}</h2>
+        @if (lastMessage()) {
+          <p class="last-message">{{ lastMessage() }}</p>
         } @else {
           <p class="no-messages">No messages yet</p>
         }
       </ion-label>
-      @if (unreadCount && unreadCount > 0) {
-        <ion-badge slot="end" color="primary">{{ unreadCount }}</ion-badge>
+      @if (unreadCount() && unreadCount()! > 0) {
+        <ion-badge slot="end" color="primary">{{ unreadCount() }}</ion-badge>
       }
       <ion-button
         slot="end"
@@ -112,19 +112,19 @@ import { Contact } from '../../../core/interfaces';
   `
 })
 export class ContactItemComponent {
-  @Input() contact!: Contact;
-  @Input() isSelected = false;
-  @Input() lastMessage?: string;
-  @Input() unreadCount?: number;
-  @Output() clicked = new EventEmitter<void>();
-  @Output() delete = new EventEmitter<void>();
+  contact = input.required<Contact>();
+  isSelected = input(false);
+  lastMessage = input<string | undefined>(undefined);
+  unreadCount = input<number | undefined>(undefined);
+  clicked = output<void>();
+  delete = output<void>();
 
   constructor() {
     addIcons({ trash });
   }
 
   getInitials(): string {
-    const username = this.contact.username;
+    const username = this.contact().username;
     if (username.length >= 2) {
       return username.substring(0, 2).toUpperCase();
     }

@@ -1,9 +1,9 @@
-<aside [class.open]="isOpen" class="sidebar mobile">
+<aside [class.open]="isOpen()" class="sidebar mobile">
   <div class="sidebar-header">
     <div class="user-profile">
-      <div class="user-avatar">{{ userInitials }}</div>
+      <div class="user-avatar">{{ userInitials() }}</div>
       <div class="user-info">
-        <h3>{{ username }}</h3>
+        <h3>{{ username() }}</h3>
         <p>Your account</p>
       </div>
       <ion-button

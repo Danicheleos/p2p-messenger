@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output, signal, inject } from '@angular/core';
+import { Component, signal, inject, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
@@ -45,7 +45,7 @@ import { APP_CONSTANTS } from '../../../core/constants/app.const';
         <ion-button
           fill="clear"
           (click)="onAttachmentClick()"
-          [disabled]="isSending"
+          [disabled]="isSending()"
           class="attach-button"
         >
           <ion-icon name="attach" slot="icon-only"></ion-icon>
@@ -56,7 +56,7 @@ import { APP_CONSTANTS } from '../../../core/constants/app.const';
             [(ngModel)]="messageText"
             (keydown.enter)="onEnterKey($event)"
             placeholder="Type a message..."
-            [disabled]="isSending"
+            [disabled]="isSending()"
             [maxlength]="APP_CONSTANTS.VALIDATION.MESSAGE_MAX_LENGTH"
             class="message-input"
           ></ion-input>
@@ -161,9 +161,9 @@ import { APP_CONSTANTS } from '../../../core/constants/app.const';
   `
 })
 export class MessageInputComponent {
-  @Input() isSending: boolean = false;
-  @Output() sendMessage = new EventEmitter<{ text: string; file?: File }>();
-  @Output() attachmentSelected = new EventEmitter<File>();
+  isSending = input(false);
+  sendMessage = output<{ text: string; file?: File }>();
+  attachmentSelected = output<File>();
 
   readonly APP_CONSTANTS = APP_CONSTANTS;
   messageText = '';
@@ -177,7 +177,7 @@ export class MessageInputComponent {
   canSend(): boolean {
     return (
       (this.messageText.trim().length > 0 || this.previewFile() !== null) &&
-      !this.isSending
+      !this.isSending()
     );
   }
 

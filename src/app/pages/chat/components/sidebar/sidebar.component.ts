@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, computed, inject } from '@angular/core';
+import { Component, computed, inject, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   IonList,
@@ -31,11 +31,11 @@ import { MessageService } from '../../../../core/services/message.service';
   styleUrl: './sidebar.component.scss'
 })
 export class SidebarComponent {
-  @Input() isOpen = false;
-  @Input() username = '';
-  @Input() userInitials = '';
-  @Output() contactSelected = new EventEmitter<string>();
-  @Output() searchChanged = new EventEmitter<string>();
+  isOpen = input(false);
+  username = input('');
+  userInitials = input('');
+  contactSelected = output<string>();
+  searchChanged = output<string>();
 
   private modalController = inject(ModalController);
   private contactService = inject(ContactService);

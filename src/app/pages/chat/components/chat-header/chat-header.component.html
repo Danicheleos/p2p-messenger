@@ -7,9 +7,9 @@
         </ion-button>
       }
     </ion-buttons>
-    <ion-title>{{ title }}</ion-title>
+    <ion-title>{{ title() }}</ion-title>
     <ion-buttons slot="end">
-      @if (connectionState !== 'connected') {
+      @if (connectionState() !== 'connected') {
         <ion-button (click)="onConnectClick()" [color]="connectionStatus().color" size="small">
           <ion-icon [name]="connectionStatus().icon" slot="start"></ion-icon>
           {{ connectionStatus().text }}
