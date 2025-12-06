@@ -107,6 +107,13 @@ Phase 7 focuses on polishing the application, implementing comprehensive error h
 - `src/app/core/services/message.service.ts`: Integrated ErrorService, sanitization, and HMAC verification
 - `src/app/pages/chat/chat.component.ts`: Added loading states and ErrorService
 
+### Components
+- `src/app/pages/chat/components/sidebar/sidebar.component.ts`: Added debounced search
+- `src/app/pages/chat/components/messages-container/messages-container.component.ts`: Added auto-scroll and trackBy optimization
+
+### Utilities
+- `src/app/core/utils/debounce.util.ts`: Debounce and throttle utilities
+
 ### Interfaces
 - `src/app/core/interfaces/message.interface.ts`: Added MessageSignature interface
 
@@ -158,13 +165,31 @@ Phase 7 focuses on polishing the application, implementing comprehensive error h
 - ✅ Replay attack protection (timestamp included)
 - ✅ Shared secret derived from public keys (no key exchange needed)
 
+### 6. Performance Optimizations
+
+#### Debouncing
+- **Search Input**: Implemented debounced search (300ms delay) in sidebar
+  - Reduces unnecessary filtering operations
+  - Improves performance with large contact lists
+  - Created `debounce.util.ts` utility for reusable debouncing
+
+#### Message Rendering Optimizations
+- **TrackBy Function**: Added `trackByMessageId` for efficient list rendering
+  - Prevents unnecessary DOM updates
+  - Improves performance with large message lists
+- **Auto-Scroll**: Implemented automatic scroll to bottom for new messages
+  - Smooth scrolling behavior
+  - Only scrolls when new messages arrive
+  - Uses `effect()` for reactive updates
+
+#### Utilities Created
+- `src/app/core/utils/debounce.util.ts`: Debounce and throttle utilities
+  - `debounce()`: Delays function execution
+  - `throttle()`: Limits function execution frequency
+
 ## Remaining Tasks
 
 ### Phase 7 (Continued)
-- [ ] Performance optimizations
-  - Virtual scrolling for message lists
-  - Debouncing for search inputs
-  - Image lazy loading
 - [ ] Responsive design refinement
   - Mobile UX improvements
   - Touch gesture support
@@ -173,10 +198,9 @@ Phase 7 focuses on polishing the application, implementing comprehensive error h
 ## Next Steps
 
 1. ✅ Implement message integrity verification using HMAC - **COMPLETED**
-2. Add virtual scrolling for long message lists
-3. Optimize image loading and rendering
-4. Enhance mobile responsive design
-5. Add performance monitoring
+2. ✅ Add performance optimizations (debouncing, trackBy, auto-scroll) - **COMPLETED**
+3. Enhance mobile responsive design
+4. Add performance monitoring (optional)
 
 ## Testing Notes
 

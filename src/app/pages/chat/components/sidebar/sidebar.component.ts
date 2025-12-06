@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, output } from '@angular/core';
+import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   IonList,
@@ -15,6 +15,7 @@ import { UserService } from '../../../../core/services/user.service';
 import { ContactItemComponent } from '../../../../shared/components/contact-item/contact-item.component';
 import { AddContactModalComponent } from '../../../../shared/components/add-contact-modal/add-contact-modal.component';
 import { MessageService } from '../../../../core/services/message.service';
+import { debounce } from '../../../../core/utils/debounce.util';
 
 @Component({
   selector: 'app-sidebar',
@@ -47,21 +48,27 @@ export class SidebarComponent {
   readonly selectedContactId = this.contactService.selectedContactId;
   readonly currentUser = this.userService.currentUser;
 
-  private _searchQuery = '';
+  private _searchQuery = signal('');
 
   readonly filteredContacts = computed(() => {
-    const query = this._searchQuery.toLowerCase();
+    const query = this._searchQuery().toLowerCase();
     if (!query) return this.contacts();
     return this.contacts().filter(c => c.username.toLowerCase().includes(query));
   });
+
+  // Debounced search handler (300ms delay)
+  private debouncedSearch = debounce((query: string) => {
+    this.searchChanged.emit(query);
+  }, 300);
 
   constructor() {
     addIcons({ add, copy });
   }
 
   onSearch(event: any): void {
-    this._searchQuery = event.detail.value || '';
-    this.searchChanged.emit(this._searchQuery);
+    const query = event.detail.value || '';
+    this._searchQuery.set(query);
+    this.debouncedSearch(query);
   }
 
   onContactClick(contactId: string): void {
