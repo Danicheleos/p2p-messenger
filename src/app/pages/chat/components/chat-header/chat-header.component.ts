@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, inject, computed } from '@angular/core';
+import { Component, inject, computed, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   IonHeader,
@@ -35,10 +35,10 @@ import { IS_MOBILE } from '../../../../core/constants/resize.token';
   styleUrl: './chat-header.component.scss'
 })
 export class ChatHeaderComponent {
-  @Input() title = 'P2P Chat';
-  @Input() connectionState: 'connecting' | 'connected' | 'disconnected' | 'failed' = 'disconnected';
-  @Output() menuToggle = new EventEmitter<void>();
-  @Output() connectClick = new EventEmitter<void>();
+  title = input('P2P Chat');
+  connectionState = input<'connecting' | 'connected' | 'disconnected' | 'failed'>('disconnected');
+  menuToggle = output<void>();
+  connectClick = output<void>();
 
   private router = inject(Router);
   private userService = inject(UserService);
@@ -47,7 +47,7 @@ export class ChatHeaderComponent {
   readonly showMenuButton = inject(IS_MOBILE);
 
   readonly connectionStatus = computed(() => {
-    switch (this.connectionState) {
+    switch (this.connectionState()) {
       case 'connected':
         return { text: 'Connected', color: 'success', icon: 'radio' };
       case 'connecting':

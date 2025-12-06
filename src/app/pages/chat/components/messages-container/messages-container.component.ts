@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Message } from '../../../../core/interfaces';
 import { MessageBubbleComponent } from '../../../../shared/components/message-bubble/message-bubble.component';
@@ -11,7 +11,7 @@ import { MessageBubbleComponent } from '../../../../shared/components/message-bu
   styleUrl: './messages-container.component.scss'
 })
 export class MessagesContainerComponent {
-  @Input() messages: Message[] = [];
-  @Input() currentUserId = '';
+  messages = input<Message[]>([]);
+  currentUserId = input('');
 }
 

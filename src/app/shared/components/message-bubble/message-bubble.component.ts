@@ -1,4 +1,4 @@
-import { Component, Input, computed, inject } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IonItem, IonLabel, IonAvatar, IonImg, IonIcon } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
@@ -13,24 +13,24 @@ import { UserService } from '../../../core/services/user.service';
   template: `
     <div [class]="messageClass()">
       <div class="message-content">
-        @if (message.attachment) {
+        @if (message().attachment) {
           <div class="attachment-container">
             <ion-img
-              [src]="message.attachment.data"
-              [alt]="message.attachment.filename"
+              [src]="message().attachment!.data"
+              [alt]="message().attachment!.filename"
               class="attachment-image"
             ></ion-img>
             <div class="attachment-info">
-              <span class="attachment-filename">{{ message.attachment.filename }}</span>
-              <span class="attachment-size">{{ formatFileSize(message.attachment.size) }}</span>
+              <span class="attachment-filename">{{ message().attachment!.filename }}</span>
+              <span class="attachment-size">{{ formatFileSize(message().attachment!.size) }}</span>
             </div>
           </div>
         }
-        <div class="message-text">{{ message.content }}</div>
+        <div class="message-text">{{ message().content }}</div>
         <div class="message-footer">
-          <span class="message-time">{{ formatTime(message.timestamp) }}</span>
+          <span class="message-time">{{ formatTime(message().timestamp) }}</span>
           @if (isSent()) {
-            <ion-icon name="checkmark-done" [class.delivered]="message.delivered" [class.read]="message.read"></ion-icon>
+            <ion-icon name="checkmark-done" [class.delivered]="message().delivered" [class.read]="message().read"></ion-icon>
           }
         </div>
       </div>
@@ -150,8 +150,8 @@ import { UserService } from '../../../core/services/user.service';
   `
 })
 export class MessageBubbleComponent {
-  @Input() message!: Message;
-  @Input() currentUserId!: string;
+  message = input.required<Message>();
+  currentUserId = input.required<string>();
 
   private userService = inject(UserService);
 
@@ -159,7 +159,7 @@ export class MessageBubbleComponent {
     addIcons({ checkmarkDone });
   }
 
-  readonly isSent = computed(() => this.message.senderId === this.currentUserId);
+  readonly isSent = computed(() => this.message().senderId === this.currentUserId());
   readonly messageClass = computed(() => 
     this.isSent() ? 'message-bubble sent' : 'message-bubble received'
   );
