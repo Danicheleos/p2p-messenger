@@ -128,8 +128,8 @@ export class ChatComponent implements OnInit {
     const modal = await this.modalController.create({
       component: SignalingExchangeModalComponent,
       componentProps: {
-        contactId: signal(exportData),
-        exportDataInput: signal(exportData)
+        contactId: contactId,
+        exportDataInput: exportData
       }
     });
 

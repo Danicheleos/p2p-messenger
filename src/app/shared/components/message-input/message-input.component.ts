@@ -86,6 +86,14 @@ import { APP_CONSTANTS } from '../../../core/constants/app.const';
       background: var(--ion-background-color);
       border-top: 1px solid var(--ion-border-color);
       padding: 8px;
+      /* iOS safe area insets for bottom */
+      padding-bottom: calc(8px + env(safe-area-inset-bottom));
+      
+      @media (max-width: 767px) {
+        /* Better mobile padding */
+        padding-left: 12px;
+        padding-right: 12px;
+      }
     }
 
     .file-preview {
@@ -152,7 +160,16 @@ import { APP_CONSTANTS } from '../../../core/constants/app.const';
       --padding-start: 12px;
       --padding-end: 12px;
       min-width: 44px;
+      min-height: 44px;
       height: 44px;
+      /* Ensure touch-friendly size on mobile */
+      touch-action: manipulation;
+      
+      @media (max-width: 767px) {
+        min-width: 48px;
+        min-height: 48px;
+        height: 48px;
+      }
     }
 
     .send-button:disabled {

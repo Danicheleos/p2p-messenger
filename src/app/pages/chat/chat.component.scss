@@ -18,8 +18,22 @@
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
   z-index: 999;
+  backdrop-filter: blur(2px);
+  animation: fadeIn 0.3s ease;
+  /* iOS safe area insets */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
 
   @media (min-width: 768px) {
     display: none;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }

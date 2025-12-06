@@ -3,6 +3,18 @@
 @media (max-width: 767px) {
   .menu-toggle {
     display: block;
+    min-width: 44px;
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+  
+  ion-header {
+    /* iOS safe area insets */
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  ion-toolbar {
+    --min-height: 56px;
   }
 }
 

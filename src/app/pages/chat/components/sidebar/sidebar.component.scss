@@ -9,16 +9,24 @@
   z-index: 1000;
 
   &.mobile {
-    position: absolute;
+    position: fixed;
     left: 0;
     top: 0;
     bottom: 0;
     height: 100vh;
+    height: 100dvh; /* Dynamic viewport height for mobile */
     transform: translateX(-100%);
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+    /* iOS safe area insets */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
 
     &.open {
       transform: translateX(0);
     }
+
+    /* Smooth transition */
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   @media (min-width: 768px) {
@@ -76,9 +84,17 @@
   margin-left: auto;
   flex-shrink: 0;
   --color: var(--app-text-secondary);
+  min-width: 44px;
+  min-height: 44px;
+  touch-action: manipulation;
   
   &:hover {
     --color: var(--ion-color-primary);
+  }
+  
+  @media (max-width: 767px) {
+    min-width: 48px;
+    min-height: 48px;
   }
 }
 
