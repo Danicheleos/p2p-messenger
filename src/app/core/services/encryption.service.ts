@@ -123,6 +123,90 @@ export class EncryptionService {
   }
 
   /**
+   * Generate HMAC-SHA256 for message integrity verification
+   * 
+   * @param data - Data to sign (encrypted message payload)
+   * @param secretKey - Secret key for HMAC (derived from public keys)
+   * @returns Base64 encoded HMAC
+   */
+  async generateHMAC(data: string, secretKey: CryptoKey): Promise<string> {
+    const encoder = new TextEncoder();
+    const dataBuffer = encoder.encode(data);
+    
+    const signature = await crypto.subtle.sign(
+      {
+        name: 'HMAC',
+        hash: 'SHA-256'
+      },
+      secretKey,
+      dataBuffer
+    );
+    
+    return this.arrayBufferToBase64(signature);
+  }
+
+  /**
+   * Verify HMAC-SHA256 signature
+   * 
+   * @param data - Data to verify
+   * @param signature - HMAC signature to verify against
+   * @param secretKey - Secret key for HMAC
+   * @returns True if signature is valid
+   */
+  async verifyHMAC(data: string, signature: string, secretKey: CryptoKey): Promise<boolean> {
+    try {
+      const encoder = new TextEncoder();
+      const dataBuffer = encoder.encode(data);
+      const signatureBuffer = this.base64ToArrayBuffer(signature);
+      
+      const isValid = await crypto.subtle.verify(
+        {
+          name: 'HMAC',
+          hash: 'SHA-256'
+        },
+        secretKey,
+        signatureBuffer,
+        dataBuffer
+      );
+      
+      return isValid;
+    } catch (error) {
+      console.error('Error verifying HMAC:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Derive shared secret key from two public keys for HMAC
+   * Uses a combination of both public keys to create a shared secret
+   * 
+   * @param publicKey1 - First public key (base64 string)
+   * @param publicKey2 - Second public key (base64 string)
+   * @returns HMAC key derived from both public keys
+   */
+  async deriveSharedHMACKey(publicKey1: string, publicKey2: string): Promise<CryptoKey> {
+    // Combine both public keys (sorted to ensure same key regardless of order)
+    const combined = [publicKey1, publicKey2].sort().join('|');
+    
+    // Hash the combined keys to get a consistent secret
+    const secretHash = await this.hashData(combined);
+    
+    // Import as HMAC key
+    const keyData = this.base64ToArrayBuffer(secretHash);
+    
+    return await crypto.subtle.importKey(
+      'raw',
+      keyData,
+      {
+        name: 'HMAC',
+        hash: 'SHA-256'
+      },
+      false,
+      ['sign', 'verify']
+    );
+  }
+
+  /**
    * Convert ArrayBuffer to base64 string
    */
   private arrayBufferToBase64(buffer: ArrayBuffer): string {

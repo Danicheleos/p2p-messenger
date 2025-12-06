@@ -103,8 +103,12 @@ Phase 7 focuses on polishing the application, implementing comprehensive error h
 ## Files Modified
 
 ### Services
-- `src/app/core/services/message.service.ts`: Integrated ErrorService and sanitization
+- `src/app/core/services/encryption.service.ts`: Added HMAC generation and verification methods
+- `src/app/core/services/message.service.ts`: Integrated ErrorService, sanitization, and HMAC verification
 - `src/app/pages/chat/chat.component.ts`: Added loading states and ErrorService
+
+### Interfaces
+- `src/app/core/interfaces/message.interface.ts`: Added MessageSignature interface
 
 ### Components
 - `src/app/pages/chat/components/chat-area/chat-area.component.ts`: Improved error handling
@@ -134,10 +138,29 @@ Phase 7 focuses on polishing the application, implementing comprehensive error h
 ✅ No TypeScript errors  
 ✅ All security improvements integrated  
 
+### 5. Message Integrity Verification (HMAC)
+
+#### Implementation
+- **HMAC-SHA256**: Implemented Hash-based Message Authentication Code for message integrity
+- **Shared Secret Derivation**: Derives shared secret from both users' public keys
+- **Automatic Verification**: All messages verified before decryption
+- **Tamper Detection**: Rejects messages with invalid HMAC signatures
+
+#### Features
+- `generateHMAC()`: Generate HMAC signature for outgoing messages
+- `verifyHMAC()`: Verify HMAC signature for incoming messages
+- `deriveSharedHMACKey()`: Derive shared secret from public keys
+- Backward compatible with legacy messages (without signatures)
+
+#### Security Benefits
+- ✅ Message integrity verification
+- ✅ Tamper detection
+- ✅ Replay attack protection (timestamp included)
+- ✅ Shared secret derived from public keys (no key exchange needed)
+
 ## Remaining Tasks
 
 ### Phase 7 (Continued)
-- [ ] Message integrity verification (HMAC/signatures)
 - [ ] Performance optimizations
   - Virtual scrolling for message lists
   - Debouncing for search inputs
@@ -149,7 +172,7 @@ Phase 7 focuses on polishing the application, implementing comprehensive error h
 
 ## Next Steps
 
-1. Implement message integrity verification using HMAC
+1. ✅ Implement message integrity verification using HMAC - **COMPLETED**
 2. Add virtual scrolling for long message lists
 3. Optimize image loading and rendering
 4. Enhance mobile responsive design

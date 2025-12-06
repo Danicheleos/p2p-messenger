@@ -5,7 +5,7 @@ import { ContactService } from './contact.service';
 import { P2PService } from './p2p.service';
 import { EncryptionService } from './encryption.service';
 import { ErrorService } from './error.service';
-import { Message, EncryptedContent } from '../interfaces';
+import { Message, EncryptedContent, MessageSignature } from '../interfaces';
 import { SanitizationUtil } from '../utils/sanitization.util';
 
 /**
@@ -159,7 +159,7 @@ export class MessageService {
     };
 
     // Prepare encrypted payload for P2P transmission
-    const encryptedPayload = JSON.stringify({
+    const payloadData = {
       encryptedContent: encryptedContent,
       attachment: encryptedAttachment ? {
         encryptedData: encryptedAttachment,
@@ -169,6 +169,23 @@ export class MessageService {
         mimeType: attachmentData!.data.split(';')[0].split(':')[1] || 'image/jpeg'
       } : undefined,
       timestamp: new Date().toISOString()
+    };
+
+    // Generate HMAC for message integrity verification
+    const payloadString = JSON.stringify(payloadData);
+    const sharedHMACKey = await this.encryptionService.deriveSharedHMACKey(
+      user.publicKey,
+      contact.publicKey
+    );
+    const hmac = await this.encryptionService.generateHMAC(payloadString, sharedHMACKey);
+
+    // Add HMAC to payload
+    const encryptedPayload = JSON.stringify({
+      ...payloadData,
+      signature: {
+        hmac: hmac,
+        timestamp: Date.now()
+      }
     });
 
     // Try to send via P2P connection
@@ -269,34 +286,66 @@ export class MessageService {
       // Parse message payload
       const payload = JSON.parse(messageData);
       
+      // Extract payload data (without signature) for processing
+      const { signature, ...payloadData } = payload;
+      
+      // Verify message integrity (HMAC)
+      if (signature && signature.hmac) {
+        const payloadString = JSON.stringify(payloadData);
+        
+        // Get contact to access their public key
+        const contact = this.contactService.contacts().find(c => c.id === contactId);
+        if (contact) {
+          // Derive shared HMAC key
+          const sharedHMACKey = await this.encryptionService.deriveSharedHMACKey(
+            user.publicKey,
+            contact.publicKey
+          );
+          
+          // Verify HMAC
+          const isValid = await this.encryptionService.verifyHMAC(
+            payloadString,
+            signature.hmac,
+            sharedHMACKey
+          );
+          
+          if (!isValid) {
+            throw new Error('Message integrity verification failed. Message may have been tampered with.');
+          }
+        }
+      } else {
+        // Legacy message without signature - log warning but allow
+        console.warn('Received message without integrity signature (legacy format)');
+      }
+      
       // Import user's private key for decryption
       const privateKey = await this.encryptionService.importPrivateKey(user.privateKey);
 
       // Decrypt message content
       let decryptedContent: string;
-      if (payload.encryptedContent) {
+      if (payloadData.encryptedContent) {
         // New encrypted format (hybrid encryption)
         const rawContent = await this.encryptionService.decryptMessageHybrid(
-          payload.encryptedContent.encryptedData,
-          payload.encryptedContent.encryptedKey,
-          payload.encryptedContent.iv,
+          payloadData.encryptedContent.encryptedData,
+          payloadData.encryptedContent.encryptedKey,
+          payloadData.encryptedContent.iv,
           privateKey
         );
         // Sanitize decrypted content to prevent XSS
         decryptedContent = SanitizationUtil.sanitizeMessage(rawContent);
-      } else if (payload.text) {
+      } else if (payloadData.text) {
         // Legacy plain text format (for backward compatibility)
-        decryptedContent = SanitizationUtil.sanitizeMessage(payload.text);
+        decryptedContent = SanitizationUtil.sanitizeMessage(payloadData.text);
       } else {
         throw new Error('Invalid message format');
       }
 
       // Decrypt attachment if present
       let attachmentData: Message['attachment'] | undefined;
-      if (payload.attachment) {
-        if (payload.attachment.encryptedData && payload.attachment.encryptedData.encryptedData) {
+      if (payloadData.attachment) {
+        if (payloadData.attachment.encryptedData && payloadData.attachment.encryptedData.encryptedData) {
           // New encrypted format (hybrid encryption)
-          const encryptedAttachment = payload.attachment.encryptedData;
+          const encryptedAttachment = payloadData.attachment.encryptedData;
           const decryptedBase64 = await this.encryptionService.decryptAttachmentHybrid(
             encryptedAttachment.encryptedData,
             encryptedAttachment.encryptedKey,
@@ -305,20 +354,20 @@ export class MessageService {
           );
 
           // Reconstruct data URL with original MIME type
-          const mimeType = payload.attachment.mimeType || 'image/jpeg';
+          const mimeType = payloadData.attachment.mimeType || 'image/jpeg';
           const dataUrl = decryptedBase64.startsWith('data:') 
             ? decryptedBase64 
             : `data:${mimeType};base64,${decryptedBase64}`;
 
           attachmentData = {
-            type: payload.attachment.type || 'image',
+            type: payloadData.attachment.type || 'image',
             data: dataUrl,
-            filename: payload.attachment.filename,
-            size: payload.attachment.size
+            filename: payloadData.attachment.filename,
+            size: payloadData.attachment.size
           };
-        } else if (payload.attachment.data) {
+        } else if (payloadData.attachment.data) {
           // Legacy plain text format
-          attachmentData = payload.attachment;
+          attachmentData = payloadData.attachment;
         }
       }
 
@@ -328,8 +377,8 @@ export class MessageService {
         recipientId: user.id,
         content: decryptedContent,
         attachment: attachmentData,
-        timestamp: new Date(payload.timestamp || Date.now()),
-        encrypted: !!payload.encryptedContent, // True if encrypted, false if legacy
+        timestamp: new Date(payloadData.timestamp || Date.now()),
+        encrypted: !!payloadData.encryptedContent, // True if encrypted, false if legacy
         delivered: true,
         read: false
       };

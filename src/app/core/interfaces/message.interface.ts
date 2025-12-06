@@ -8,6 +8,14 @@ export interface EncryptedContent {
 }
 
 /**
+ * Message integrity signature (HMAC)
+ */
+export interface MessageSignature {
+  hmac: string; // Base64 encoded HMAC-SHA256
+  timestamp: number; // Message timestamp for replay protection
+}
+
+/**
  * Message interface for chat messages
  */
 export interface Message {
